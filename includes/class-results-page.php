@@ -281,9 +281,11 @@ class CAC_Results_Page {
 	 * @return string
 	 */
 	private function disclaimer_html() {
-		return '<p class="cac-disclaimer">'
-			. esc_html__( 'This check is for guidance only. The homeowner is responsible for confirming any planning requirements with their local planning authority before work begins.', 'conservation-area-checker' )
-			. '</p>';
+		$disclaimer = CAC_Settings::get( 'msg_disclaimer' );
+		if ( '' === $disclaimer ) {
+			return '';
+		}
+		return '<p class="cac-disclaimer">' . esc_html( $disclaimer ) . '</p>';
 	}
 
 	/**
@@ -292,17 +294,15 @@ class CAC_Results_Page {
 	 * @return string
 	 */
 	private function advisory_html() {
-		$items = array(
-			__( 'Recent new-build developments: Some planning consents restrict external materials or styles. Check your original purchase documents or ask your solicitor.', 'conservation-area-checker' ),
-			__( 'Flats, leasehold, and housing association properties: You may need written consent from your freeholder, management company, or housing association before replacing windows or doors.', 'conservation-area-checker' ),
-			__( 'Properties above shops or on high streets: Commercial planning rules may apply. Your local planning authority can confirm.', 'conservation-area-checker' ),
-			__( 'Estate-wide style or colour covenants: Some estates have covenants requiring matching styles, colours, or materials. Your title deeds will show if this applies.', 'conservation-area-checker' ),
-			__( 'Small villages and rural settings: Even outside formal conservation areas, some parishes and councils apply informal character policies. It is worth checking with your local parish or district council.', 'conservation-area-checker' ),
-			__( 'Parish council constraints: Some parish councils maintain local design guides. These are not legally binding in the same way as an Article 4 Direction, but they can influence planning decisions.', 'conservation-area-checker' ),
-		);
+		$items = CAC_Settings::advisory_items();
+		if ( empty( $items ) ) {
+			return '';
+		}
+
+		$summary = CAC_Settings::get( 'advisory_summary' );
 
 		$out  = '<details class="cac-advisory">';
-		$out .= '<summary class="cac-advisory-summary">' . esc_html__( 'Other things worth checking before you book', 'conservation-area-checker' ) . '</summary>';
+		$out .= '<summary class="cac-advisory-summary">' . esc_html( $summary ) . '</summary>';
 		$out .= '<ul class="cac-advisory-list">';
 		foreach ( $items as $item ) {
 			$out .= '<li>' . esc_html( $item ) . '</li>';

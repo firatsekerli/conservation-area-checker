@@ -206,11 +206,20 @@
 			});
 	}
 
-	// Result copy. Kept here so the JS-rendered states match the PHP wording.
-	var COPY = {
+	// Result copy. Editable from the plugin settings page and handed over via
+	// wp_localize_script (window.cacChecker.copy). These defaults are only a
+	// fallback for the unlikely case the localized values are missing.
+	var DEFAULT_COPY = {
 		none: 'This postcode does not appear to be within a conservation area or Article 4 Direction area. Standard permitted development rules are likely to apply. Your surveyor will confirm during your free visit.',
 		conservation: 'This postcode appears to be within a conservation area. Replacement windows and doors may need to match the existing style and material. Our surveyor will advise during your free visit.',
 		article4: 'This area may be subject to an Article 4 Direction. This can mean planning permission is required before replacing windows or doors on elevations visible from the road. Rules vary by street and property type, so our surveyor will confirm what applies to your home.'
+	};
+
+	var LOCALIZED = (window.cacChecker && window.cacChecker.copy) || {};
+	var COPY = {
+		none: LOCALIZED.none || DEFAULT_COPY.none,
+		conservation: LOCALIZED.conservation || DEFAULT_COPY.conservation,
+		article4: LOCALIZED.article4 || DEFAULT_COPY.article4
 	};
 
 	/**

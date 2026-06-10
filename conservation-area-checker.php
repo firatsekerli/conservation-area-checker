@@ -154,6 +154,13 @@ final class Conservation_Area_Checker {
 			'cacChecker',
 			array(
 				'resultsUrl' => $this->results_page->get_results_url(),
+				// Result-state copy is editable from the settings page. The JS
+				// uses these and falls back to its own defaults if absent.
+				'copy'       => array(
+					'none'         => CAC_Settings::get( 'msg_none' ),
+					'conservation' => CAC_Settings::get( 'msg_conservation' ),
+					'article4'     => CAC_Settings::get( 'msg_article4' ),
+				),
 			)
 		);
 	}

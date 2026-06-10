@@ -72,7 +72,43 @@ class CAC_Settings {
 			'cta_heading'        => 'Not sure what applies to your home? Book a free survey and our team will check everything for you.',
 			'cta_button_label'   => 'Book a free survey',
 			'cta_button_url'     => '',
+			'msg_none'           => 'This postcode does not appear to be within a conservation area or Article 4 Direction area. Standard permitted development rules are likely to apply. Your surveyor will confirm during your free visit.',
+			'msg_conservation'   => 'This postcode appears to be within a conservation area. Replacement windows and doors may need to match the existing style and material. Our surveyor will advise during your free visit.',
+			'msg_article4'       => 'This area may be subject to an Article 4 Direction. This can mean planning permission is required before replacing windows or doors on elevations visible from the road. Rules vary by street and property type, so our surveyor will confirm what applies to your home.',
+			'msg_disclaimer'     => 'This check is for guidance only. The homeowner is responsible for confirming any planning requirements with their local planning authority before work begins.',
+			'advisory_summary'   => 'Other things worth checking before you book',
+			'advisory_items'     => implode(
+				"\n",
+				array(
+					'Recent new-build developments: Some planning consents restrict external materials or styles. Check your original purchase documents or ask your solicitor.',
+					'Flats, leasehold, and housing association properties: You may need written consent from your freeholder, management company, or housing association before replacing windows or doors.',
+					'Properties above shops or on high streets: Commercial planning rules may apply. Your local planning authority can confirm.',
+					'Estate-wide style or colour covenants: Some estates have covenants requiring matching styles, colours, or materials. Your title deeds will show if this applies.',
+					'Small villages and rural settings: Even outside formal conservation areas, some parishes and councils apply informal character policies. It is worth checking with your local parish or district council.',
+					'Parish council constraints: Some parish councils maintain local design guides. These are not legally binding in the same way as an Article 4 Direction, but they can influence planning decisions.',
+				)
+			),
 		);
+	}
+
+	/**
+	 * Advisory items as a clean array, one per line.
+	 *
+	 * @return string[]
+	 */
+	public static function advisory_items() {
+		$raw   = (string) self::get( 'advisory_items' );
+		$lines = preg_split( '/[\r\n]+/', $raw );
+		$out   = array();
+
+		foreach ( (array) $lines as $line ) {
+			$line = trim( $line );
+			if ( '' !== $line ) {
+				$out[] = $line;
+			}
+		}
+
+		return $out;
 	}
 
 	/**
@@ -176,6 +212,24 @@ class CAC_Settings {
 		if ( isset( $input['cta_button_url'] ) ) {
 			$output['cta_button_url'] = esc_url_raw( trim( $input['cta_button_url'] ) );
 		}
+		if ( isset( $input['msg_none'] ) ) {
+			$output['msg_none'] = sanitize_textarea_field( $input['msg_none'] );
+		}
+		if ( isset( $input['msg_conservation'] ) ) {
+			$output['msg_conservation'] = sanitize_textarea_field( $input['msg_conservation'] );
+		}
+		if ( isset( $input['msg_article4'] ) ) {
+			$output['msg_article4'] = sanitize_textarea_field( $input['msg_article4'] );
+		}
+		if ( isset( $input['msg_disclaimer'] ) ) {
+			$output['msg_disclaimer'] = sanitize_textarea_field( $input['msg_disclaimer'] );
+		}
+		if ( isset( $input['advisory_summary'] ) ) {
+			$output['advisory_summary'] = sanitize_text_field( $input['advisory_summary'] );
+		}
+		if ( isset( $input['advisory_items'] ) ) {
+			$output['advisory_items'] = sanitize_textarea_field( $input['advisory_items'] );
+		}
 
 		return $output;
 	}
@@ -247,6 +301,45 @@ class CAC_Settings {
 						<td>
 							<input name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[cta_button_url]" id="cac_cta_button_url" type="url" class="regular-text" placeholder="https://example.com/free-quote/" value="<?php echo esc_attr( self::get( 'cta_button_url' ) ); ?>" />
 							<p class="description"><?php esc_html_e( 'The call to action is only shown when a URL is set.', 'conservation-area-checker' ); ?></p>
+						</td>
+					</tr>
+				</table>
+
+				<h2 class="title"><?php esc_html_e( 'Result messages', 'conservation-area-checker' ); ?></h2>
+				<p class="description"><?php esc_html_e( 'Shown inside the result box on the results page. The "both" state (conservation area and Article 4) shows the conservation and Article 4 messages together, so it has no separate field.', 'conservation-area-checker' ); ?></p>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="cac_msg_conservation"><?php esc_html_e( 'Conservation area message', 'conservation-area-checker' ); ?></label></th>
+						<td><textarea name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[msg_conservation]" id="cac_msg_conservation" rows="3" class="large-text"><?php echo esc_textarea( self::get( 'msg_conservation' ) ); ?></textarea></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="cac_msg_article4"><?php esc_html_e( 'Article 4 Direction message', 'conservation-area-checker' ); ?></label></th>
+						<td><textarea name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[msg_article4]" id="cac_msg_article4" rows="3" class="large-text"><?php echo esc_textarea( self::get( 'msg_article4' ) ); ?></textarea></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="cac_msg_none"><?php esc_html_e( 'No restrictions message', 'conservation-area-checker' ); ?></label></th>
+						<td><textarea name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[msg_none]" id="cac_msg_none" rows="3" class="large-text"><?php echo esc_textarea( self::get( 'msg_none' ) ); ?></textarea></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="cac_msg_disclaimer"><?php esc_html_e( 'Guidance disclaimer', 'conservation-area-checker' ); ?></label></th>
+						<td>
+							<textarea name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[msg_disclaimer]" id="cac_msg_disclaimer" rows="3" class="large-text"><?php echo esc_textarea( self::get( 'msg_disclaimer' ) ); ?></textarea>
+							<p class="description"><?php esc_html_e( 'Shown in smaller grey text below every result.', 'conservation-area-checker' ); ?></p>
+						</td>
+					</tr>
+				</table>
+
+				<h2 class="title"><?php esc_html_e( 'Advisory section', 'conservation-area-checker' ); ?></h2>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="cac_advisory_summary"><?php esc_html_e( 'Section heading', 'conservation-area-checker' ); ?></label></th>
+						<td><input name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[advisory_summary]" id="cac_advisory_summary" type="text" class="large-text" value="<?php echo esc_attr( self::get( 'advisory_summary' ) ); ?>" /></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="cac_advisory_items"><?php esc_html_e( 'List items', 'conservation-area-checker' ); ?></label></th>
+						<td>
+							<textarea name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[advisory_items]" id="cac_advisory_items" rows="10" class="large-text"><?php echo esc_textarea( self::get( 'advisory_items' ) ); ?></textarea>
+							<p class="description"><?php esc_html_e( 'One bullet per line. Leave blank to hide the advisory section entirely.', 'conservation-area-checker' ); ?></p>
 						</td>
 					</tr>
 				</table>
