@@ -34,6 +34,138 @@ class CAC_Settings {
 	public function register() {
 		add_action( 'admin_menu', array( $this, 'add_menu' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin' ) );
+		add_action( 'wp_ajax_cac_test_connection', array( $this, 'ajax_test_connection' ) );
+	}
+
+	/**
+	 * Enqueue the settings-page helper script, only on our settings page.
+	 *
+	 * @param string $hook Current admin page hook suffix.
+	 */
+	public function enqueue_admin( $hook ) {
+		if ( 'settings_page_' . self::PAGE_SLUG !== $hook ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'cac-admin',
+			CAC_URL . 'assets/admin.js',
+			array(),
+			CAC_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'cac-admin',
+			'cacAdmin',
+			array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'cac_test_connection' ),
+				'testing' => __( 'Testing the connection to the planning data service...', 'conservation-area-checker' ),
+				'okMsg'   => __( 'Connected. The live lookup can reach the planning data service.', 'conservation-area-checker' ),
+				'failMsg' => __( 'There is a problem reaching the planning data service. See the details below.', 'conservation-area-checker' ),
+				'failed'  => __( 'The test could not be completed. Please try again.', 'conservation-area-checker' ),
+			)
+		);
+	}
+
+	/**
+	 * AJAX: probe the Planning Data API from this server and report back.
+	 */
+	public function ajax_test_connection() {
+		check_ajax_referer( 'cac_test_connection', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'conservation-area-checker' ) ), 403 );
+		}
+
+		// Two reachability checks plus one geometry check against a point that
+		// sits inside the Bath conservation area, to confirm the spatial query
+		// works and not just that the host responds.
+		$checks = array(
+			array_merge(
+				array( 'label' => __( 'Conservation area dataset reachable', 'conservation-area-checker' ) ),
+				$this->probe( 'conservation-area', null, null )
+			),
+			array_merge(
+				array( 'label' => __( 'Article 4 dataset reachable', 'conservation-area-checker' ) ),
+				$this->probe( 'article-4-direction-area', null, null )
+			),
+			array_merge(
+				array( 'label' => __( 'Location lookup test (a known conservation area)', 'conservation-area-checker' ) ),
+				$this->probe( 'conservation-area', 51.3811, -2.3590 )
+			),
+		);
+
+		// The connection is considered good when both datasets are reachable.
+		$ok = ! empty( $checks[0]['ok'] ) && ! empty( $checks[1]['ok'] );
+
+		wp_send_json_success(
+			array(
+				'ok'     => $ok,
+				'checks' => $checks,
+			)
+		);
+	}
+
+	/**
+	 * Make a single Planning Data API request and summarise the outcome.
+	 *
+	 * @param string     $dataset Dataset slug.
+	 * @param float|null $lat     Optional latitude for a geometry query.
+	 * @param float|null $lon     Optional longitude for a geometry query.
+	 * @return array
+	 */
+	private function probe( $dataset, $lat, $lon ) {
+		$base = apply_filters( 'cac_planning_api_base', 'https://www.planning.data.gov.uk/entity.json' );
+
+		$args = array(
+			'dataset' => $dataset,
+			'limit'   => 1,
+		);
+		if ( null !== $lat && null !== $lon ) {
+			$args['geometry_relation'] = 'intersects';
+			$args['geometry']          = sprintf( 'POINT(%s %s)', (float) $lon, (float) $lat );
+		}
+
+		$url      = $base . '?' . http_build_query( $args );
+		$response = wp_remote_get(
+			$url,
+			array(
+				'timeout' => 10,
+				'headers' => array( 'Accept' => 'application/json' ),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return array(
+				'ok'     => false,
+				'status' => 0,
+				'count'  => null,
+				'detail' => $response->get_error_message(),
+			);
+		}
+
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		$body   = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		$count = null;
+		if ( is_array( $body ) ) {
+			if ( isset( $body['count'] ) ) {
+				$count = (int) $body['count'];
+			} elseif ( isset( $body['entities'] ) && is_array( $body['entities'] ) ) {
+				$count = count( $body['entities'] );
+			}
+		}
+
+		$ok = ( 200 === $status && null !== $count );
+
+		return array(
+			'ok'     => $ok,
+			'status' => $status,
+			'count'  => $count,
+			'detail' => $ok ? '' : __( 'Unexpected response from the service.', 'conservation-area-checker' ),
+		);
 	}
 
 	/**
@@ -326,6 +458,14 @@ class CAC_Settings {
 					<tr>
 						<th scope="row"><label for="cac_article4_url"><?php esc_html_e( 'Article 4 GeoJSON URL', 'conservation-area-checker' ); ?></label></th>
 						<td><input name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[article4_url]" id="cac_article4_url" type="url" class="large-text" placeholder="<?php echo esc_attr( CAC_URL . 'data/article-4-areas.json' ); ?>" value="<?php echo esc_attr( self::get( 'article4_url' ) ); ?>" /></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Live lookup check', 'conservation-area-checker' ); ?></th>
+						<td>
+							<button type="button" class="button" id="cac-test-connection"><?php esc_html_e( 'Test connection', 'conservation-area-checker' ); ?></button>
+							<p class="description"><?php esc_html_e( 'Checks that this server can reach the planning data service used by the live lookup. No settings are changed.', 'conservation-area-checker' ); ?></p>
+							<div id="cac-test-result"></div>
+						</td>
 					</tr>
 				</table>
 
