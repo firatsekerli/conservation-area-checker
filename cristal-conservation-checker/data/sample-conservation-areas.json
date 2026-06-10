@@ -1,0 +1,64 @@
+{
+	"type": "FeatureCollection",
+	"name": "sample-conservation-areas",
+	"description": "Sample conservation area polygons near Fleet, Hampshire, for development and testing only. Replace with a filtered Hampshire/Surrey/Berkshire dataset before production. See assets/checker.js for the production data sources.",
+	"features": [
+		{
+			"type": "Feature",
+			"properties": {
+				"name": "Fleet Town Centre (sample)",
+				"reference": "SAMPLE-FLEET-01"
+			},
+			"geometry": {
+				"type": "Polygon",
+				"coordinates": [
+					[
+						[-0.8520, 51.2790],
+						[-0.8380, 51.2790],
+						[-0.8380, 51.2880],
+						[-0.8520, 51.2880],
+						[-0.8520, 51.2790]
+					]
+				]
+			}
+		},
+		{
+			"type": "Feature",
+			"properties": {
+				"name": "Crookham Village (sample)",
+				"reference": "SAMPLE-CROOKHAM-02"
+			},
+			"geometry": {
+				"type": "Polygon",
+				"coordinates": [
+					[
+						[-0.8300, 51.2720],
+						[-0.8160, 51.2720],
+						[-0.8160, 51.2810],
+						[-0.8300, 51.2810],
+						[-0.8300, 51.2720]
+					]
+				]
+			}
+		},
+		{
+			"type": "Feature",
+			"properties": {
+				"name": "Hartley Wintney (sample)",
+				"reference": "SAMPLE-HARTLEY-03"
+			},
+			"geometry": {
+				"type": "Polygon",
+				"coordinates": [
+					[
+						[-0.9080, 51.3030],
+						[-0.8940, 51.3030],
+						[-0.8940, 51.3120],
+						[-0.9080, 51.3120],
+						[-0.9080, 51.3030]
+					]
+				]
+			}
+		}
+	]
+}
