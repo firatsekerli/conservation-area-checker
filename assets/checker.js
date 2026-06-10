@@ -11,26 +11,28 @@
  * ---------------------------------------------------------------------------
  * DEVELOPER HANDOFF: swapping in production data
  * ---------------------------------------------------------------------------
- * In development this page is given two data URLs from PHP, both pointing at:
- *   /wp-content/plugins/conservation-area-checker/data/sample-conservation-areas.json
- *
  * The URLs arrive on the result element as data-conservation-url and
- * data-article4-url (set in includes/class-results-page.php, render_in_area()).
- * Change them there, not here, to point at real data.
+ * data-article4-url. PHP resolves them (includes/class-results-page.php,
+ * boundary_url()) in this order: a URL set on the settings page, then the
+ * bundled real files, then the sample file. You do not edit this script to
+ * change the data source.
  *
- * 1. WHERE TO REPLACE THE SAMPLE PATH
- *    The sample path is set in PHP (render_in_area). Replace the two
- *    $geojson_url / $article4_url values with your production file paths or a
- *    serverless endpoint URL, then this script picks them up automatically.
+ * 1. HOW TO ADD REAL DATA
+ *    Run the build tool from the plugin root to create the two real files:
+ *      php tools/build-datasets.php
+ *    It downloads the national datasets, filters them to the service-region
+ *    bounding box, and writes data/conservation-areas.json and
+ *    data/article-4-areas.json. The plugin uses them automatically once they
+ *    exist. Alternatively, set full URLs under Settings > Conservation Area
+ *    Checker > Boundary data.
  *
  * 2. RECOMMENDED PRODUCTION APPROACH
- *    a) Preferred for simplicity: host a pre-filtered regional GeoJSON file in
- *       this plugin's data/ folder and point the PHP URLs at it. No server
+ *    a) Preferred for simplicity: ship the pre-filtered regional files in this
+ *       plugin's data/ folder (what build-datasets.php produces). No server
  *       round trips, easy to cache on the CDN.
- *    b) Alternative: proxy through a small PHP endpoint in this plugin that
- *       fetches and caches the Planning Data API response (for example with a
- *       transient), so the large upstream files are downloaded once and the
- *       client only ever sees the filtered result.
+ *    b) Alternative: proxy through a small PHP endpoint that fetches and caches
+ *       the Planning Data API response (for example with a transient), then
+ *       point the Boundary data URLs at it.
  *
  * 3. CONSERVATION AREA DATASET (Planning Data)
  *    https://www.planning.data.gov.uk/dataset/conservation-area.geojson

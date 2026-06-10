@@ -69,6 +69,8 @@ class CAC_Settings {
 					'Windsor and Maidenhead',
 				)
 			),
+			'conservation_url'   => '',
+			'article4_url'       => '',
 			'cta_heading'        => 'Not sure what applies to your home? Book a free survey and our team will check everything for you.',
 			'cta_button_label'   => 'Book a free survey',
 			'cta_button_url'     => '',
@@ -203,6 +205,12 @@ class CAC_Settings {
 		if ( isset( $input['allowed_areas'] ) ) {
 			$output['allowed_areas'] = sanitize_textarea_field( $input['allowed_areas'] );
 		}
+		if ( isset( $input['conservation_url'] ) ) {
+			$output['conservation_url'] = esc_url_raw( trim( $input['conservation_url'] ) );
+		}
+		if ( isset( $input['article4_url'] ) ) {
+			$output['article4_url'] = esc_url_raw( trim( $input['article4_url'] ) );
+		}
 		if ( isset( $input['cta_heading'] ) ) {
 			$output['cta_heading'] = sanitize_text_field( $input['cta_heading'] );
 		}
@@ -283,6 +291,21 @@ class CAC_Settings {
 							<textarea name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[allowed_areas]" id="cac_allowed_areas" rows="8" class="large-text code"><?php echo esc_textarea( self::get( 'allowed_areas' ) ); ?></textarea>
 							<p class="description"><?php esc_html_e( 'One per line. A postcode counts as in area when it is within the radius and its county or district matches this list. Postcodes.io returns district names for some postcodes, so include both. Leave blank to check distance only.', 'conservation-area-checker' ); ?></p>
 						</td>
+					</tr>
+				</table>
+
+				<h2 class="title"><?php esc_html_e( 'Boundary data (GeoJSON)', 'conservation-area-checker' ); ?></h2>
+				<p class="description">
+					<?php esc_html_e( 'The conservation area and Article 4 checks run against GeoJSON boundary files. Leave these blank to use the files bundled in the plugin data/ folder: the plugin uses data/conservation-areas.json and data/article-4-areas.json when present, and falls back to the bundled sample until you add them. To build real filtered files for your region, run tools/build-datasets.php. Set a full URL below to load data from elsewhere instead, for example a serverless endpoint.', 'conservation-area-checker' ); ?>
+				</p>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="cac_conservation_url"><?php esc_html_e( 'Conservation area GeoJSON URL', 'conservation-area-checker' ); ?></label></th>
+						<td><input name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[conservation_url]" id="cac_conservation_url" type="url" class="large-text" placeholder="<?php echo esc_attr( CAC_URL . 'data/conservation-areas.json' ); ?>" value="<?php echo esc_attr( self::get( 'conservation_url' ) ); ?>" /></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="cac_article4_url"><?php esc_html_e( 'Article 4 GeoJSON URL', 'conservation-area-checker' ); ?></label></th>
+						<td><input name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[article4_url]" id="cac_article4_url" type="url" class="large-text" placeholder="<?php echo esc_attr( CAC_URL . 'data/article-4-areas.json' ); ?>" value="<?php echo esc_attr( self::get( 'article4_url' ) ); ?>" /></td>
 					</tr>
 				</table>
 

@@ -248,10 +248,11 @@ class CAC_Results_Page {
 			)
 		);
 
-		// Development data path. See checker.js for how to swap in a filtered
-		// regional dataset or a serverless endpoint for production.
-		$geojson_url  = CAC_URL . 'data/sample-conservation-areas.json';
-		$article4_url = CAC_URL . 'data/sample-conservation-areas.json';
+		// Resolve the boundary data sources. A configured URL wins; otherwise
+		// the bundled real file is used, falling back to the sample until real
+		// data is added. Build real files with tools/build-datasets.php.
+		$geojson_url  = $this->boundary_url( 'conservation' );
+		$article4_url = $this->boundary_url( 'article4' );
 
 		ob_start();
 		?>
@@ -273,6 +274,33 @@ class CAC_Results_Page {
 		</div>
 		<?php
 		return ob_get_clean();
+	}
+
+	/**
+	 * Resolve the GeoJSON source URL for a boundary type.
+	 *
+	 * Order of preference:
+	 *   1. A URL configured on the settings page.
+	 *   2. The bundled real file (data/conservation-areas.json or
+	 *      data/article-4-areas.json) once it has been built.
+	 *   3. The bundled sample file, so the page still works out of the box.
+	 *
+	 * @param string $type Either 'conservation' or 'article4'.
+	 * @return string
+	 */
+	private function boundary_url( $type ) {
+		$setting_key = ( 'article4' === $type ) ? 'article4_url' : 'conservation_url';
+		$configured  = CAC_Settings::get( $setting_key );
+		if ( '' !== $configured ) {
+			return $configured;
+		}
+
+		$real_file = ( 'article4' === $type ) ? 'data/article-4-areas.json' : 'data/conservation-areas.json';
+		if ( file_exists( CAC_PATH . $real_file ) ) {
+			return CAC_URL . $real_file;
+		}
+
+		return CAC_URL . 'data/sample-conservation-areas.json';
 	}
 
 	/**
