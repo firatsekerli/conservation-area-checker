@@ -1,12 +1,12 @@
 <?php
 /**
- * Registers the [cristal_postcode_search] shortcode.
+ * Registers the [conservation_postcode_search] shortcode.
  *
  * The shortcode renders a compact postcode entry form. Assets are enqueued
  * only from the render callback, so the CSS and JS never load on pages that
  * do not use the shortcode.
  *
- * @package Cristal_Conservation_Checker
+ * @package Conservation_Area_Checker
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -16,13 +16,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Postcode search shortcode.
  */
-class Cristal_CC_Shortcode {
+class CAC_Shortcode {
 
 	/**
 	 * Hook the shortcode into WordPress.
 	 */
 	public function register() {
-		add_shortcode( 'cristal_postcode_search', array( $this, 'render' ) );
+		add_shortcode( 'conservation_postcode_search', array( $this, 'render' ) );
 	}
 
 	/**
@@ -37,38 +37,38 @@ class Cristal_CC_Shortcode {
 	 */
 	public function render( $atts = array() ) {
 		// Enqueue assets here so they load only where the shortcode appears.
-		cristal_cc()->enqueue_assets();
+		cac()->enqueue_assets();
 
 		ob_start();
 		?>
-		<div class="cristal-checker">
-			<form class="cristal-search" data-cristal-search novalidate>
-				<label class="cristal-search-label" for="cristal-postcode-input">
-					<?php esc_html_e( 'Enter your postcode', 'cristal-conservation-checker' ); ?>
+		<div class="cac-checker">
+			<form class="cac-search" data-cac-search novalidate>
+				<label class="cac-search-label" for="cac-postcode-input">
+					<?php esc_html_e( 'Enter your postcode', 'conservation-area-checker' ); ?>
 				</label>
-				<div class="cristal-search-row">
+				<div class="cac-search-row">
 					<input
 						type="text"
-						id="cristal-postcode-input"
+						id="cac-postcode-input"
 						name="postcode"
-						class="cristal-search-input"
+						class="cac-search-input"
 						autocomplete="postal-code"
 						autocapitalize="characters"
 						spellcheck="false"
-						placeholder="<?php esc_attr_e( 'e.g. GU51 4BY', 'cristal-conservation-checker' ); ?>"
-						aria-describedby="cristal-postcode-error"
+						placeholder="<?php esc_attr_e( 'e.g. GU51 4BY', 'conservation-area-checker' ); ?>"
+						aria-describedby="cac-postcode-error"
 					/>
-					<button type="submit" class="cristal-search-button">
-						<?php esc_html_e( 'Check my postcode', 'cristal-conservation-checker' ); ?>
+					<button type="submit" class="cac-search-button">
+						<?php esc_html_e( 'Check my postcode', 'conservation-area-checker' ); ?>
 					</button>
 				</div>
 				<p
-					id="cristal-postcode-error"
-					class="cristal-search-error"
+					id="cac-postcode-error"
+					class="cac-search-error"
 					role="alert"
 					hidden
 				>
-					<?php esc_html_e( 'Please enter a valid UK postcode, for example GU51 4BY.', 'cristal-conservation-checker' ); ?>
+					<?php esc_html_e( 'Please enter a valid UK postcode, for example GU51 4BY.', 'conservation-area-checker' ); ?>
 				</p>
 			</form>
 		</div>

@@ -5,8 +5,9 @@
  * The GeoJSON polygon (point-in-polygon) check runs client-side in checker.js.
  * This class only handles the parts that are best done on the server: format
  * validation, the Postcodes.io lookup, and the distance and county checks.
+ * The service-area centre, radius, and allowed areas come from the settings.
  *
- * @package Cristal_Conservation_Checker
+ * @package Conservation_Area_Checker
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -16,22 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Geo helper for the checker.
  */
-class Cristal_CC_Geocheck {
-
-	/**
-	 * Fleet, Hampshire latitude used as the service-area centre.
-	 */
-	const FLEET_LAT = 51.2832;
-
-	/**
-	 * Fleet, Hampshire longitude used as the service-area centre.
-	 */
-	const FLEET_LON = -0.8444;
-
-	/**
-	 * Maximum install distance from Fleet, in miles.
-	 */
-	const MAX_DISTANCE_MILES = 30;
+class CAC_Geocheck {
 
 	/**
 	 * Validate a UK postcode format.
@@ -47,30 +33,39 @@ class Cristal_CC_Geocheck {
 	}
 
 	/**
-	 * Counties and districts we treat as inside the service area.
+	 * Service-area centre latitude from the settings.
 	 *
-	 * Postcodes.io returns district names rather than county names for some
-	 * postcodes, so the allowed list covers both. Comparison is case-insensitive.
+	 * @return float
+	 */
+	public function centre_lat() {
+		return (float) CAC_Settings::get( 'centre_lat' );
+	}
+
+	/**
+	 * Service-area centre longitude from the settings.
+	 *
+	 * @return float
+	 */
+	public function centre_lon() {
+		return (float) CAC_Settings::get( 'centre_lon' );
+	}
+
+	/**
+	 * Maximum install distance from the centre, in miles, from the settings.
+	 *
+	 * @return float
+	 */
+	public function max_distance_miles() {
+		return (float) CAC_Settings::get( 'radius_miles' );
+	}
+
+	/**
+	 * Counties and districts we treat as inside the service area.
 	 *
 	 * @return string[]
 	 */
 	public function allowed_areas() {
-		return array(
-			'Hampshire',
-			'Surrey',
-			'Berkshire',
-			'Surrey Heath',
-			'Hart',
-			'Waverley',
-			'Guildford',
-			'Rushmoor',
-			'Basingstoke and Deane',
-			'West Berkshire',
-			'Wokingham',
-			'Reading',
-			'Bracknell Forest',
-			'Windsor and Maidenhead',
-		);
+		return CAC_Settings::allowed_areas();
 	}
 
 	/**
@@ -98,27 +93,27 @@ class Cristal_CC_Geocheck {
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		if ( 200 !== $code ) {
 			return new WP_Error(
-				'cristal_cc_lookup_failed',
-				__( 'We could not look up that postcode. Please check it and try again.', 'cristal-conservation-checker' )
+				'cac_lookup_failed',
+				__( 'We could not look up that postcode. Please check it and try again.', 'conservation-area-checker' )
 			);
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( empty( $body['result'] ) || ! is_array( $body['result'] ) ) {
 			return new WP_Error(
-				'cristal_cc_no_result',
-				__( 'We could not find that postcode. Please check it and try again.', 'cristal-conservation-checker' )
+				'cac_no_result',
+				__( 'We could not find that postcode. Please check it and try again.', 'conservation-area-checker' )
 			);
 		}
 
 		$result = $body['result'];
 
 		return array(
-			'postcode'                  => isset( $result['postcode'] ) ? (string) $result['postcode'] : '',
-			'latitude'                  => isset( $result['latitude'] ) ? (float) $result['latitude'] : null,
-			'longitude'                 => isset( $result['longitude'] ) ? (float) $result['longitude'] : null,
-			'admin_county'              => isset( $result['admin_county'] ) ? (string) $result['admin_county'] : '',
-			'admin_district'            => isset( $result['admin_district'] ) ? (string) $result['admin_district'] : '',
+			'postcode'                   => isset( $result['postcode'] ) ? (string) $result['postcode'] : '',
+			'latitude'                   => isset( $result['latitude'] ) ? (float) $result['latitude'] : null,
+			'longitude'                  => isset( $result['longitude'] ) ? (float) $result['longitude'] : null,
+			'admin_county'               => isset( $result['admin_county'] ) ? (string) $result['admin_county'] : '',
+			'admin_district'             => isset( $result['admin_district'] ) ? (string) $result['admin_district'] : '',
 			'parliamentary_constituency' => isset( $result['parliamentary_constituency'] ) ? (string) $result['parliamentary_constituency'] : '',
 		);
 	}
@@ -135,8 +130,8 @@ class Cristal_CC_Geocheck {
 	public function haversine_miles( $lat1, $lon1, $lat2, $lon2 ) {
 		$earth_radius_miles = 3958.8;
 
-		$lat1_rad = deg2rad( (float) $lat1 );
-		$lat2_rad = deg2rad( (float) $lat2 );
+		$lat1_rad  = deg2rad( (float) $lat1 );
+		$lat2_rad  = deg2rad( (float) $lat2 );
 		$delta_lat = deg2rad( (float) $lat2 - (float) $lat1 );
 		$delta_lon = deg2rad( (float) $lon2 - (float) $lon1 );
 
@@ -150,14 +145,14 @@ class Cristal_CC_Geocheck {
 	}
 
 	/**
-	 * Distance of a location from Fleet, in miles.
+	 * Distance of a location from the configured service centre, in miles.
 	 *
 	 * @param float $lat Latitude.
 	 * @param float $lon Longitude.
 	 * @return float Distance in miles.
 	 */
-	public function distance_from_fleet( $lat, $lon ) {
-		return $this->haversine_miles( self::FLEET_LAT, self::FLEET_LON, $lat, $lon );
+	public function distance_from_centre( $lat, $lon ) {
+		return $this->haversine_miles( $this->centre_lat(), $this->centre_lon(), $lat, $lon );
 	}
 
 	/**
@@ -184,9 +179,10 @@ class Cristal_CC_Geocheck {
 	/**
 	 * Decide whether a looked-up location sits inside the service area.
 	 *
-	 * In area means within the install radius of Fleet and inside an allowed
-	 * county or district. Both the admin_county and admin_district fields are
-	 * checked because Postcodes.io populates them inconsistently.
+	 * In area means within the install radius of the centre and inside an
+	 * allowed county or district. Both the admin_county and admin_district
+	 * fields are checked because Postcodes.io populates them inconsistently.
+	 * When no allowed areas are configured, distance alone decides.
 	 *
 	 * @param array $location Normalised data from lookup().
 	 * @return bool
@@ -196,14 +192,18 @@ class Cristal_CC_Geocheck {
 			return false;
 		}
 
-		$distance = $this->distance_from_fleet( $location['latitude'], $location['longitude'] );
-		if ( $distance > self::MAX_DISTANCE_MILES ) {
+		$distance = $this->distance_from_centre( $location['latitude'], $location['longitude'] );
+		if ( $distance > $this->max_distance_miles() ) {
 			return false;
 		}
 
-		$area_ok = $this->is_allowed_area( $location['admin_county'] )
-			|| $this->is_allowed_area( $location['admin_district'] );
+		$allowed = $this->allowed_areas();
+		if ( empty( $allowed ) ) {
+			// No county filter configured: rely on the distance check only.
+			return true;
+		}
 
-		return $area_ok;
+		return $this->is_allowed_area( $location['admin_county'] )
+			|| $this->is_allowed_area( $location['admin_district'] );
 	}
 }

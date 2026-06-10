@@ -1,5 +1,5 @@
 /**
- * Cristal Windows Conservation Area Checker - front-end script.
+ * Conservation Area Checker - front-end script.
  *
  * This single file handles two jobs:
  *   1. The postcode entry form (shortcode output): validate the format and
@@ -12,7 +12,7 @@
  * DEVELOPER HANDOFF: swapping in production data
  * ---------------------------------------------------------------------------
  * In development this page is given two data URLs from PHP, both pointing at:
- *   /wp-content/plugins/cristal-conservation-checker/data/sample-conservation-areas.json
+ *   /wp-content/plugins/conservation-area-checker/data/sample-conservation-areas.json
  *
  * The URLs arrive on the result element as data-conservation-url and
  * data-article4-url (set in includes/class-results-page.php, render_in_area()).
@@ -24,9 +24,9 @@
  *    serverless endpoint URL, then this script picks them up automatically.
  *
  * 2. RECOMMENDED PRODUCTION APPROACH
- *    a) Preferred for simplicity: host a pre-filtered Hampshire / Surrey /
- *       Berkshire GeoJSON file in this plugin's data/ folder and point the PHP
- *       URLs at it. No server round trips, easy to cache on the CDN.
+ *    a) Preferred for simplicity: host a pre-filtered regional GeoJSON file in
+ *       this plugin's data/ folder and point the PHP URLs at it. No server
+ *       round trips, easy to cache on the CDN.
  *    b) Alternative: proxy through a small PHP endpoint in this plugin that
  *       fetches and caches the Planning Data API response (for example with a
  *       transient), so the large upstream files are downloaded once and the
@@ -40,9 +40,9 @@
  *
  * 5. NOTE ON SIZE
  *    Both datasets cover the whole of England and are large. Filter them down
- *    to the service area (a bounding box around Fleet, or the three counties)
- *    before hosting. Serving the national files to every visitor would be slow
- *    and wasteful.
+ *    to the service area (a bounding box around your centre, or the relevant
+ *    counties) before hosting. Serving the national files to every visitor
+ *    would be slow and wasteful.
  * ---------------------------------------------------------------------------
  */
 (function () {
@@ -57,21 +57,21 @@
 	 * @param {HTMLFormElement} form
 	 */
 	function initSearchForm(form) {
-		var input = form.querySelector('.cristal-search-input');
-		var error = form.querySelector('.cristal-search-error');
+		var input = form.querySelector('.cac-search-input');
+		var error = form.querySelector('.cac-search-error');
 
 		function hideError() {
 			if (error) {
 				error.hidden = true;
 			}
-			input.classList.remove('cristal-search-input-invalid');
+			input.classList.remove('cac-search-input-invalid');
 		}
 
 		function showError() {
 			if (error) {
 				error.hidden = false;
 			}
-			input.classList.add('cristal-search-input-invalid');
+			input.classList.add('cac-search-input-invalid');
 			input.focus();
 		}
 
@@ -89,8 +89,8 @@
 			// Strip spaces before appending to the URL, for example GU514BY.
 			var compact = value.replace(/\s+/g, '').toUpperCase();
 
-			var base = (window.cristalChecker && window.cristalChecker.resultsUrl)
-				? window.cristalChecker.resultsUrl
+			var base = (window.cacChecker && window.cacChecker.resultsUrl)
+				? window.cacChecker.resultsUrl
 				: '/conservation-area-checker/';
 
 			var separator = base.indexOf('?') === -1 ? '?' : '&';
@@ -221,34 +221,34 @@
 	 * @param {boolean} inArticle4
 	 */
 	function renderResult(container, inConservation, inArticle4) {
-		var inner = container.querySelector('.cristal-result-inner');
+		var inner = container.querySelector('.cac-result-inner');
 		if (!inner) {
 			return;
 		}
 
 		container.classList.remove(
-			'cristal-state-loading',
-			'cristal-state-none',
-			'cristal-state-conservation',
-			'cristal-state-article4',
-			'cristal-state-both'
+			'cac-state-loading',
+			'cac-state-none',
+			'cac-state-conservation',
+			'cac-state-article4',
+			'cac-state-both'
 		);
 
 		var paragraphs = [];
 		var stateClass;
 
 		if (inConservation && inArticle4) {
-			stateClass = 'cristal-state-both';
+			stateClass = 'cac-state-both';
 			paragraphs.push(COPY.conservation);
 			paragraphs.push(COPY.article4);
 		} else if (inConservation) {
-			stateClass = 'cristal-state-conservation';
+			stateClass = 'cac-state-conservation';
 			paragraphs.push(COPY.conservation);
 		} else if (inArticle4) {
-			stateClass = 'cristal-state-article4';
+			stateClass = 'cac-state-article4';
 			paragraphs.push(COPY.article4);
 		} else {
-			stateClass = 'cristal-state-none';
+			stateClass = 'cac-state-none';
 			paragraphs.push(COPY.none);
 		}
 
@@ -302,12 +302,12 @@
 	 * Boot: attach to any forms and any results container on the page.
 	 */
 	function init() {
-		var forms = document.querySelectorAll('[data-cristal-search]');
+		var forms = document.querySelectorAll('[data-cac-search]');
 		for (var i = 0; i < forms.length; i++) {
 			initSearchForm(forms[i]);
 		}
 
-		var results = document.querySelectorAll('[data-cristal-result]');
+		var results = document.querySelectorAll('[data-cac-result]');
 		for (var j = 0; j < results.length; j++) {
 			initResult(results[j]);
 		}

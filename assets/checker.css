@@ -1,47 +1,47 @@
 /**
- * Cristal Windows Conservation Area Checker styles.
+ * Conservation Area Checker styles.
  *
- * Everything is scoped under .cristal-checker so the styles do not collide
+ * Everything is scoped under .cac-checker so the styles do not collide
  * with the Breakdance builder or the active theme. Fonts are inherited from
  * the theme on purpose: no external fonts are loaded.
  *
- * Brand colours: primary blue #1E3A8A, yellow accent #FFC407.
+ * Accent colours: primary blue #1E3A8A, yellow accent #FFC407.
  */
 
-.cristal-checker {
+.cac-checker {
 	box-sizing: border-box;
 	max-width: 640px;
 	color: inherit;
 	font-family: inherit;
 }
 
-.cristal-checker *,
-.cristal-checker *::before,
-.cristal-checker *::after {
+.cac-checker *,
+.cac-checker *::before,
+.cac-checker *::after {
 	box-sizing: border-box;
 }
 
 /* ---------------------------------------------------------------------------
  * Postcode entry form (shortcode output)
  * ------------------------------------------------------------------------- */
-.cristal-checker .cristal-search {
+.cac-checker .cac-search {
 	margin: 0 0 1rem;
 }
 
-.cristal-checker .cristal-search-label {
+.cac-checker .cac-search-label {
 	display: block;
 	margin-bottom: 0.4rem;
 	font-weight: 600;
 }
 
-.cristal-checker .cristal-search-row {
+.cac-checker .cac-search-row {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.5rem;
 	align-items: stretch;
 }
 
-.cristal-checker .cristal-search-input {
+.cac-checker .cac-search-input {
 	flex: 1 1 auto;
 	min-width: 180px;
 	padding: 0.6rem 0.75rem;
@@ -53,17 +53,17 @@
 	border-radius: 4px;
 }
 
-.cristal-checker .cristal-search-input:focus {
+.cac-checker .cac-search-input:focus {
 	outline: none;
 	border-color: #1E3A8A;
 	box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.25);
 }
 
-.cristal-checker .cristal-search-input-invalid {
+.cac-checker .cac-search-input-invalid {
 	border-color: #dc2626;
 }
 
-.cristal-checker .cristal-search-button {
+.cac-checker .cac-search-button {
 	flex: 0 0 auto;
 	padding: 0.6rem 1.1rem;
 	font-size: 1rem;
@@ -75,12 +75,12 @@
 	cursor: pointer;
 }
 
-.cristal-checker .cristal-search-button:hover,
-.cristal-checker .cristal-search-button:focus {
+.cac-checker .cac-search-button:hover,
+.cac-checker .cac-search-button:focus {
 	background: #16306e;
 }
 
-.cristal-checker .cristal-search-error {
+.cac-checker .cac-search-error {
 	margin: 0.5rem 0 0;
 	color: #dc2626;
 	font-size: 0.9rem;
@@ -88,11 +88,11 @@
 
 /* Stack input and button on small screens. */
 @media (max-width: 480px) {
-	.cristal-checker .cristal-search-row {
+	.cac-checker .cac-search-row {
 		flex-direction: column;
 	}
 
-	.cristal-checker .cristal-search-button {
+	.cac-checker .cac-search-button {
 		width: 100%;
 	}
 }
@@ -100,11 +100,11 @@
 /* ---------------------------------------------------------------------------
  * Results page
  * ------------------------------------------------------------------------- */
-.cristal-checker .cristal-intro {
+.cac-checker .cac-intro {
 	margin: 0 0 1rem;
 }
 
-.cristal-checker .cristal-result {
+.cac-checker .cac-result {
 	margin: 0 0 1.25rem;
 	padding: 1.25rem;
 	background: #F7F7F9;
@@ -112,49 +112,49 @@
 	border-left: 4px solid #6b7280;
 }
 
-.cristal-checker .cristal-result-inner p {
+.cac-checker .cac-result-inner p {
 	margin: 0 0 0.75rem;
 }
 
-.cristal-checker .cristal-result-inner p:last-child {
+.cac-checker .cac-result-inner p:last-child {
 	margin-bottom: 0;
 }
 
-.cristal-checker .cristal-disclaimer {
+.cac-checker .cac-disclaimer {
 	margin: 1rem 0 0;
 	font-size: 0.9rem;
 	color: #4b5563;
 }
 
 /* State colours applied to the left border. */
-.cristal-checker .cristal-state-loading {
+.cac-checker .cac-state-loading {
 	border-left-color: #9ca3af;
 }
 
-.cristal-checker .cristal-state-outside {
+.cac-checker .cac-state-outside {
 	border-left-color: #6b7280;
 }
 
-.cristal-checker .cristal-state-none {
+.cac-checker .cac-state-none {
 	border-left-color: #16a34a;
 }
 
-.cristal-checker .cristal-state-conservation {
+.cac-checker .cac-state-conservation {
 	border-left-color: #FFC407;
 }
 
-.cristal-checker .cristal-state-article4 {
+.cac-checker .cac-state-article4 {
 	border-left-color: #f97316;
 }
 
-.cristal-checker .cristal-state-both {
+.cac-checker .cac-state-both {
 	border-left-color: #dc2626;
 }
 
 /* ---------------------------------------------------------------------------
  * Advisory details / summary (no JavaScript)
  * ------------------------------------------------------------------------- */
-.cristal-checker .cristal-advisory {
+.cac-checker .cac-advisory {
 	margin: 0 0 1.25rem;
 	padding: 0.5rem 0.75rem;
 	background: #ffffff;
@@ -162,7 +162,7 @@
 	border-radius: 8px;
 }
 
-.cristal-checker .cristal-advisory-summary {
+.cac-checker .cac-advisory-summary {
 	position: relative;
 	padding: 0.4rem 1.75rem 0.4rem 0;
 	font-weight: 600;
@@ -171,12 +171,12 @@
 }
 
 /* Hide the default disclosure marker across browsers. */
-.cristal-checker .cristal-advisory-summary::-webkit-details-marker {
+.cac-checker .cac-advisory-summary::-webkit-details-marker {
 	display: none;
 }
 
 /* Subtle chevron drawn with CSS content, no icon font. */
-.cristal-checker .cristal-advisory-summary::after {
+.cac-checker .cac-advisory-summary::after {
 	content: "";
 	position: absolute;
 	top: 50%;
@@ -189,35 +189,35 @@
 	transition: transform 0.15s ease;
 }
 
-.cristal-checker .cristal-advisory[open] .cristal-advisory-summary::after {
+.cac-checker .cac-advisory[open] .cac-advisory-summary::after {
 	transform: translateY(-35%) rotate(225deg);
 }
 
-.cristal-checker .cristal-advisory-list {
+.cac-checker .cac-advisory-list {
 	margin: 0.75rem 0 0.25rem;
 	padding-left: 1.25rem;
 }
 
-.cristal-checker .cristal-advisory-list li {
+.cac-checker .cac-advisory-list li {
 	margin-bottom: 0.6rem;
 }
 
-.cristal-checker .cristal-advisory-list li:last-child {
+.cac-checker .cac-advisory-list li:last-child {
 	margin-bottom: 0;
 }
 
 /* ---------------------------------------------------------------------------
  * Lead-generation call to action
  * ------------------------------------------------------------------------- */
-.cristal-checker .cristal-cta {
+.cac-checker .cac-cta {
 	margin: 0;
 }
 
-.cristal-checker .cristal-cta-text {
+.cac-checker .cac-cta-text {
 	margin: 0 0 0.75rem;
 }
 
-.cristal-checker .cristal-cta-button {
+.cac-checker .cac-cta-button {
 	display: inline-block;
 	padding: 0.7rem 1.4rem;
 	font-weight: 600;
@@ -228,8 +228,8 @@
 	border-radius: 4px;
 }
 
-.cristal-checker .cristal-cta-button:hover,
-.cristal-checker .cristal-cta-button:focus {
+.cac-checker .cac-cta-button:hover,
+.cac-checker .cac-cta-button:focus {
 	background: #16306e;
 	color: #ffffff;
 }

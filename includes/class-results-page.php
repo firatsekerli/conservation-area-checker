@@ -8,7 +8,7 @@
  * client-side polygon check. When the parameter is absent it shows the search
  * form, so the page is useful on its own.
  *
- * @package Cristal_Conservation_Checker
+ * @package Conservation_Area_Checker
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -18,12 +18,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Results page controller.
  */
-class Cristal_CC_Results_Page {
+class CAC_Results_Page {
 
 	/**
 	 * Geo helper.
 	 *
-	 * @var Cristal_CC_Geocheck
+	 * @var CAC_Geocheck
 	 */
 	private $geo;
 
@@ -31,7 +31,7 @@ class Cristal_CC_Results_Page {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->geo = new Cristal_CC_Geocheck();
+		$this->geo = new CAC_Geocheck();
 	}
 
 	/**
@@ -47,7 +47,7 @@ class Cristal_CC_Results_Page {
 	 * @return int Page ID, or 0 when not set.
 	 */
 	public function get_page_id() {
-		return (int) get_option( CRISTAL_CC_PAGE_OPTION, 0 );
+		return (int) get_option( CAC_PAGE_OPTION, 0 );
 	}
 
 	/**
@@ -65,7 +65,7 @@ class Cristal_CC_Results_Page {
 				return $permalink;
 			}
 		}
-		return home_url( '/' . CRISTAL_CC_PAGE_SLUG . '/' );
+		return home_url( '/' . CAC_PAGE_SLUG . '/' );
 	}
 
 	/**
@@ -84,7 +84,7 @@ class Cristal_CC_Results_Page {
 			return $content;
 		}
 
-		cristal_cc()->enqueue_assets();
+		cac()->enqueue_assets();
 
 		return $this->render();
 	}
@@ -129,14 +129,14 @@ class Cristal_CC_Results_Page {
 	private function render_form_intro() {
 		ob_start();
 		?>
-		<div class="cristal-checker">
-			<p class="cristal-intro">
-				<?php esc_html_e( 'Enter your postcode to check for conservation areas and Article 4 Direction areas near you.', 'cristal-conservation-checker' ); ?>
+		<div class="cac-checker">
+			<p class="cac-intro">
+				<?php esc_html_e( 'Enter your postcode to check for conservation areas and Article 4 Direction areas near you.', 'conservation-area-checker' ); ?>
 			</p>
 		</div>
 		<?php
 		// Reuse the shortcode form so behaviour stays consistent.
-		$form = do_shortcode( '[cristal_postcode_search]' );
+		$form = do_shortcode( '[conservation_postcode_search]' );
 		return ob_get_clean() . $form;
 	}
 
@@ -149,14 +149,14 @@ class Cristal_CC_Results_Page {
 	private function render_invalid( $postcode ) {
 		ob_start();
 		?>
-		<div class="cristal-checker">
-			<div class="cristal-result cristal-state-outside">
-				<div class="cristal-result-inner">
+		<div class="cac-checker">
+			<div class="cac-result cac-state-outside">
+				<div class="cac-result-inner">
 					<p>
 						<?php
 						printf(
 							/* translators: %s: the postcode the visitor entered. */
-							esc_html__( 'We could not read the postcode %s. Please enter a valid UK postcode, for example GU51 4BY.', 'cristal-conservation-checker' ),
+							esc_html__( 'We could not read the postcode %s. Please enter a valid UK postcode, for example GU51 4BY.', 'conservation-area-checker' ),
 							'<strong>' . esc_html( $postcode ) . '</strong>'
 						);
 						?>
@@ -165,7 +165,7 @@ class Cristal_CC_Results_Page {
 			</div>
 		</div>
 		<?php
-		$form = do_shortcode( '[cristal_postcode_search]' );
+		$form = do_shortcode( '[conservation_postcode_search]' );
 		return ob_get_clean() . $form;
 	}
 
@@ -179,15 +179,15 @@ class Cristal_CC_Results_Page {
 	private function render_lookup_error( $postcode, $message ) {
 		ob_start();
 		?>
-		<div class="cristal-checker">
-			<div class="cristal-result cristal-state-outside">
-				<div class="cristal-result-inner">
+		<div class="cac-checker">
+			<div class="cac-result cac-state-outside">
+				<div class="cac-result-inner">
 					<p><?php echo esc_html( $message ); ?></p>
 				</div>
 			</div>
 		</div>
 		<?php
-		$form = do_shortcode( '[cristal_postcode_search]' );
+		$form = do_shortcode( '[conservation_postcode_search]' );
 		return ob_get_clean() . $form;
 	}
 
@@ -199,18 +199,39 @@ class Cristal_CC_Results_Page {
 	private function render_out_of_area() {
 		ob_start();
 		?>
-		<div class="cristal-checker">
-			<div class="cristal-result cristal-state-outside">
-				<div class="cristal-result-inner">
-					<p><?php esc_html_e( 'We currently install within 30 miles of Fleet in Hampshire, Surrey, and Berkshire. This postcode falls outside that area.', 'cristal-conservation-checker' ); ?></p>
+		<div class="cac-checker">
+			<div class="cac-result cac-state-outside">
+				<div class="cac-result-inner">
+					<p><?php echo esc_html( $this->out_of_area_message() ); ?></p>
 				</div>
-				<?php echo $this->disclaimer_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static, escaped within helper. ?>
+				<?php echo $this->disclaimer_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
 			</div>
-			<?php echo $this->advisory_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static, escaped within helper. ?>
-			<?php echo $this->cta_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static, escaped within helper. ?>
+			<?php echo $this->advisory_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
+			<?php echo $this->cta_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
 		</div>
 		<?php
 		return ob_get_clean();
+	}
+
+	/**
+	 * Compose the out-of-area sentence from the configured service area.
+	 *
+	 * @return string
+	 */
+	private function out_of_area_message() {
+		$radius = (float) CAC_Settings::get( 'radius_miles' );
+		// Show a whole number when the radius is whole.
+		$radius_display = ( floor( $radius ) === $radius ) ? (string) (int) $radius : (string) $radius;
+		$centre         = CAC_Settings::get( 'centre_label' );
+		$area           = CAC_Settings::get( 'service_area_label' );
+
+		return sprintf(
+			/* translators: 1: radius in miles, 2: centre place name, 3: service area description. */
+			__( 'We currently install within %1$s miles of %2$s in %3$s. This postcode falls outside that area.', 'conservation-area-checker' ),
+			$radius_display,
+			$centre,
+			$area
+		);
 	}
 
 	/**
@@ -229,26 +250,26 @@ class Cristal_CC_Results_Page {
 
 		// Development data path. See checker.js for how to swap in a filtered
 		// regional dataset or a serverless endpoint for production.
-		$geojson_url  = CRISTAL_CC_URL . 'data/sample-conservation-areas.json';
-		$article4_url = CRISTAL_CC_URL . 'data/sample-conservation-areas.json';
+		$geojson_url  = CAC_URL . 'data/sample-conservation-areas.json';
+		$article4_url = CAC_URL . 'data/sample-conservation-areas.json';
 
 		ob_start();
 		?>
-		<div class="cristal-checker">
+		<div class="cac-checker">
 			<div
-				class="cristal-result cristal-state-loading"
-				data-cristal-result
+				class="cac-result cac-state-loading"
+				data-cac-result
 				data-coords="<?php echo esc_attr( $coords ); ?>"
 				data-conservation-url="<?php echo esc_url( $geojson_url ); ?>"
 				data-article4-url="<?php echo esc_url( $article4_url ); ?>"
 			>
-				<div class="cristal-result-inner">
-					<p class="cristal-loading"><?php esc_html_e( 'Checking this postcode...', 'cristal-conservation-checker' ); ?></p>
+				<div class="cac-result-inner">
+					<p class="cac-loading"><?php esc_html_e( 'Checking this postcode...', 'conservation-area-checker' ); ?></p>
 				</div>
-				<?php echo $this->disclaimer_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static, escaped within helper. ?>
+				<?php echo $this->disclaimer_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
 			</div>
-			<?php echo $this->advisory_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static, escaped within helper. ?>
-			<?php echo $this->cta_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static, escaped within helper. ?>
+			<?php echo $this->advisory_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
+			<?php echo $this->cta_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
 		</div>
 		<?php
 		return ob_get_clean();
@@ -260,8 +281,8 @@ class Cristal_CC_Results_Page {
 	 * @return string
 	 */
 	private function disclaimer_html() {
-		return '<p class="cristal-disclaimer">'
-			. esc_html__( 'This check is for guidance only. The homeowner is responsible for confirming any planning requirements with their local planning authority before work begins.', 'cristal-conservation-checker' )
+		return '<p class="cac-disclaimer">'
+			. esc_html__( 'This check is for guidance only. The homeowner is responsible for confirming any planning requirements with their local planning authority before work begins.', 'conservation-area-checker' )
 			. '</p>';
 	}
 
@@ -272,17 +293,17 @@ class Cristal_CC_Results_Page {
 	 */
 	private function advisory_html() {
 		$items = array(
-			__( 'Recent new-build developments: Some planning consents restrict external materials or styles. Check your original purchase documents or ask your solicitor.', 'cristal-conservation-checker' ),
-			__( 'Flats, leasehold, and housing association properties: You may need written consent from your freeholder, management company, or housing association before replacing windows or doors.', 'cristal-conservation-checker' ),
-			__( 'Properties above shops or on high streets: Commercial planning rules may apply. Your local planning authority can confirm.', 'cristal-conservation-checker' ),
-			__( 'Estate-wide style or colour covenants: Some estates have covenants requiring matching styles, colours, or materials. Your title deeds will show if this applies.', 'cristal-conservation-checker' ),
-			__( 'Small villages and rural settings: Even outside formal conservation areas, some parishes and councils apply informal character policies. It is worth checking with your local parish or district council.', 'cristal-conservation-checker' ),
-			__( 'Parish council constraints: Some parish councils maintain local design guides. These are not legally binding in the same way as an Article 4 Direction, but they can influence planning decisions.', 'cristal-conservation-checker' ),
+			__( 'Recent new-build developments: Some planning consents restrict external materials or styles. Check your original purchase documents or ask your solicitor.', 'conservation-area-checker' ),
+			__( 'Flats, leasehold, and housing association properties: You may need written consent from your freeholder, management company, or housing association before replacing windows or doors.', 'conservation-area-checker' ),
+			__( 'Properties above shops or on high streets: Commercial planning rules may apply. Your local planning authority can confirm.', 'conservation-area-checker' ),
+			__( 'Estate-wide style or colour covenants: Some estates have covenants requiring matching styles, colours, or materials. Your title deeds will show if this applies.', 'conservation-area-checker' ),
+			__( 'Small villages and rural settings: Even outside formal conservation areas, some parishes and councils apply informal character policies. It is worth checking with your local parish or district council.', 'conservation-area-checker' ),
+			__( 'Parish council constraints: Some parish councils maintain local design guides. These are not legally binding in the same way as an Article 4 Direction, but they can influence planning decisions.', 'conservation-area-checker' ),
 		);
 
-		$out  = '<details class="cristal-advisory">';
-		$out .= '<summary class="cristal-advisory-summary">' . esc_html__( 'Other things worth checking before you book', 'cristal-conservation-checker' ) . '</summary>';
-		$out .= '<ul class="cristal-advisory-list">';
+		$out  = '<details class="cac-advisory">';
+		$out .= '<summary class="cac-advisory-summary">' . esc_html__( 'Other things worth checking before you book', 'conservation-area-checker' ) . '</summary>';
+		$out .= '<ul class="cac-advisory-list">';
 		foreach ( $items as $item ) {
 			$out .= '<li>' . esc_html( $item ) . '</li>';
 		}
@@ -294,12 +315,25 @@ class Cristal_CC_Results_Page {
 	/**
 	 * The lead-generation call to action.
 	 *
+	 * Rendered only when a button URL has been configured, so a freshly
+	 * installed copy never ships a broken or placeholder link.
+	 *
 	 * @return string
 	 */
 	private function cta_html() {
-		$out  = '<div class="cristal-cta">';
-		$out .= '<p class="cristal-cta-text">' . esc_html__( 'Not sure what applies to your home? Book a free survey and our team will check everything for you.', 'cristal-conservation-checker' ) . '</p>';
-		$out .= '<a class="cristal-cta-button" href="' . esc_url( 'https://cristalwindows.co.uk/free-quotation/' ) . '">' . esc_html__( 'Book a free survey', 'cristal-conservation-checker' ) . '</a>';
+		$url = CAC_Settings::get( 'cta_button_url' );
+		if ( '' === $url ) {
+			return '';
+		}
+
+		$heading = CAC_Settings::get( 'cta_heading' );
+		$label   = CAC_Settings::get( 'cta_button_label' );
+
+		$out  = '<div class="cac-cta">';
+		if ( '' !== $heading ) {
+			$out .= '<p class="cac-cta-text">' . esc_html( $heading ) . '</p>';
+		}
+		$out .= '<a class="cac-cta-button" href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
 		$out .= '</div>';
 
 		return $out;
