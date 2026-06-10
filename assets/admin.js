@@ -1,16 +1,17 @@
 /**
- * Settings page helper: the Boundary data "Test connection" button.
+ * Settings page helpers for the Conservation Area Checker.
  *
- * Calls a server-side handler that probes the Planning Data API from the
- * site's own server and reports whether it is reachable, so the admin can
- * confirm the live lookup will work without guessing from postcodes.
+ * Two independent tools live here:
+ *   1. "Test connection" - probes the Planning Data API from the site server.
+ *   2. "Check a postcode" - runs one postcode through the full live pipeline.
+ *
+ * Each initialises on its own, so if one tool's markup is absent the other
+ * still works.
  */
 (function () {
 	'use strict';
 
-	var btn = document.getElementById('cac-test-connection');
-	var out = document.getElementById('cac-test-result');
-	if (!btn || !out || typeof cacAdmin === 'undefined') {
+	if (typeof cacAdmin === 'undefined') {
 		return;
 	}
 
@@ -20,67 +21,88 @@
 		return div.innerHTML;
 	}
 
-	function render(data) {
-		var cls = data.ok ? 'notice-success' : 'notice-error';
-		var heading = data.ok ? cacAdmin.okMsg : cacAdmin.failMsg;
-		var html = '<div class="notice ' + cls + ' inline"><p><strong>' + escapeHtml(heading) + '</strong></p><ul style="list-style:disc;margin-left:20px">';
-
-		(data.checks || []).forEach(function (c) {
-			var mark = c.ok ? '✓' : '✗';
-			var line = mark + ' ' + escapeHtml(c.label);
-			if (c.status) {
-				line += ' (HTTP ' + escapeHtml(c.status) + ')';
-			}
-			if (c.count !== null && c.count !== undefined) {
-				line += ', ' + escapeHtml(c.count) + ' match' + (c.count === 1 ? '' : 'es');
-			}
-			if (c.detail) {
-				line += ' - ' + escapeHtml(c.detail);
-			}
-			html += '<li>' + line + '</li>';
-		});
-
-		html += '</ul></div>';
-		out.innerHTML = html;
-	}
-
-	btn.addEventListener('click', function (event) {
-		event.preventDefault();
-		btn.disabled = true;
-		out.innerHTML = '<p>' + escapeHtml(cacAdmin.testing) + '</p>';
-
+	function post(action, fields) {
 		var body = new URLSearchParams();
-		body.append('action', 'cac_test_connection');
-		body.append('nonce', cacAdmin.nonce);
-
-		fetch(cacAdmin.ajaxUrl, {
+		body.append('action', action);
+		Object.keys(fields).forEach(function (key) {
+			body.append(key, fields[key]);
+		});
+		return fetch(cacAdmin.ajaxUrl, {
 			method: 'POST',
 			credentials: 'same-origin',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: body.toString()
-		})
-			.then(function (response) { return response.json(); })
-			.then(function (res) {
-				if (res && res.success && res.data) {
-					render(res.data);
-				} else {
-					out.innerHTML = '<div class="notice notice-error inline"><p>' + escapeHtml(cacAdmin.failed) + '</p></div>';
+		}).then(function (response) { return response.json(); });
+	}
+
+	function errorNotice(message) {
+		return '<div class="notice notice-error inline"><p>' + escapeHtml(message) + '</p></div>';
+	}
+
+	// -----------------------------------------------------------------------
+	// Tool 1: Test connection.
+	// -----------------------------------------------------------------------
+	(function initConnectionTest() {
+		var btn = document.getElementById('cac-test-connection');
+		var out = document.getElementById('cac-test-result');
+		if (!btn || !out) {
+			return;
+		}
+
+		function render(data) {
+			var cls = data.ok ? 'notice-success' : 'notice-error';
+			var heading = data.ok ? cacAdmin.okMsg : cacAdmin.failMsg;
+			var html = '<div class="notice ' + cls + ' inline"><p><strong>' + escapeHtml(heading) + '</strong></p><ul style="list-style:disc;margin-left:20px">';
+
+			(data.checks || []).forEach(function (c) {
+				var line = (c.ok ? '✓' : '✗') + ' ' + escapeHtml(c.label);
+				if (c.status) {
+					line += ' (HTTP ' + escapeHtml(c.status) + ')';
 				}
-			})
-			.catch(function () {
-				out.innerHTML = '<div class="notice notice-error inline"><p>' + escapeHtml(cacAdmin.failed) + '</p></div>';
-			})
-			.then(function () { btn.disabled = false; });
-	});
+				if (c.count !== null && c.count !== undefined) {
+					line += ', ' + escapeHtml(c.count) + ' match' + (c.count === 1 ? '' : 'es');
+				}
+				if (c.detail) {
+					line += ' - ' + escapeHtml(c.detail);
+				}
+				html += '<li>' + line + '</li>';
+			});
+
+			html += '</ul></div>';
+			out.innerHTML = html;
+		}
+
+		btn.addEventListener('click', function (event) {
+			event.preventDefault();
+			btn.disabled = true;
+			out.innerHTML = '<p>' + escapeHtml(cacAdmin.testing) + '</p>';
+
+			post('cac_test_connection', { nonce: cacAdmin.nonce })
+				.then(function (res) {
+					if (res && res.success && res.data) {
+						render(res.data);
+					} else {
+						out.innerHTML = errorNotice(cacAdmin.failed);
+					}
+				})
+				.catch(function () {
+					out.innerHTML = errorNotice(cacAdmin.failed);
+				})
+				.then(function () { btn.disabled = false; });
+		});
+	})();
 
 	// -----------------------------------------------------------------------
-	// "Check a postcode" tool: runs the full live pipeline for one postcode.
+	// Tool 2: Check a postcode.
 	// -----------------------------------------------------------------------
-	var pcBtn = document.getElementById('cac-pc-btn');
-	var pcInput = document.getElementById('cac-pc-input');
-	var pcOut = document.getElementById('cac-pc-result');
+	(function initPostcodeChecker() {
+		var btn = document.getElementById('cac-pc-btn');
+		var input = document.getElementById('cac-pc-input');
+		var out = document.getElementById('cac-pc-result');
+		if (!btn || !input || !out || !cacAdmin.pc) {
+			return;
+		}
 
-	if (pcBtn && pcInput && pcOut && cacAdmin.pc) {
 		var pc = cacAdmin.pc;
 
 		// Front-end CSS is not loaded in admin, so colour the badge inline.
@@ -93,17 +115,21 @@
 			unknown: '#9ca3af'
 		};
 
-		var row = function (label, value) {
+		function row(label, value) {
 			return '<tr><th scope="row" style="width:240px">' + escapeHtml(label) + '</th><td>' + value + '</td></tr>';
-		};
+		}
 
-		var yesNo = function (flag) {
+		function yesNo(flag) {
 			return flag ? '<strong>' + escapeHtml(pc.yes) + '</strong>' : escapeHtml(pc.no);
-		};
+		}
 
-		var renderPostcode = function (d) {
+		function orNone(value) {
+			return value ? escapeHtml(value) : '<em>' + escapeHtml(pc.none) + '</em>';
+		}
+
+		function render(d) {
 			if (d.error) {
-				pcOut.innerHTML = '<div class="notice notice-error inline"><p>' + escapeHtml(d.error) + '</p></div>';
+				out.innerHTML = errorNotice(d.error);
 				return;
 			}
 
@@ -111,9 +137,9 @@
 			var rows = '';
 			rows += row(L.postcode, escapeHtml(d.postcode));
 			rows += row(L.coords, escapeHtml(d.lat) + ', ' + escapeHtml(d.lon));
-			rows += row(L.county, d.county ? escapeHtml(d.county) : '<em>' + escapeHtml(pc.none) + '</em>');
-			rows += row(L.district, d.district ? escapeHtml(d.district) : '<em>' + escapeHtml(pc.none) + '</em>');
-			rows += row(L.constituency, d.constituency ? escapeHtml(d.constituency) : '<em>' + escapeHtml(pc.none) + '</em>');
+			rows += row(L.county, orNone(d.county));
+			rows += row(L.district, orNone(d.district));
+			rows += row(L.constituency, orNone(d.constituency));
 			rows += row(L.distance, escapeHtml(d.distance) + ' ' + escapeHtml(L.miles));
 			rows += row(L.inArea, yesNo(d.in_area));
 
@@ -129,54 +155,43 @@
 			var badge = '<span style="display:inline-block;padding:.35em .7em;border-radius:4px;background:#F7F7F9;border-left:4px solid ' + color + '"><strong>' + escapeHtml(stateLabel) + '</strong></span>';
 			rows += row(L.final, badge);
 
-			pcOut.innerHTML = '<table class="widefat striped" style="max-width:680px;margin-top:10px"><tbody>' + rows + '</tbody></table>';
-		};
+			out.innerHTML = '<table class="widefat striped" style="max-width:680px;margin-top:10px"><tbody>' + rows + '</tbody></table>';
+		}
 
-		var runPostcode = function () {
-			var value = (pcInput.value || '').trim();
+		function run() {
+			var value = (input.value || '').trim();
 			if (!value) {
-				pcOut.innerHTML = '<div class="notice notice-error inline"><p>' + escapeHtml(pc.enter) + '</p></div>';
+				out.innerHTML = errorNotice(pc.enter);
 				return;
 			}
 
-			pcBtn.disabled = true;
-			pcOut.innerHTML = '<p>' + escapeHtml(pc.checking) + '</p>';
+			btn.disabled = true;
+			out.innerHTML = '<p>' + escapeHtml(pc.checking) + '</p>';
 
-			var body = new URLSearchParams();
-			body.append('action', 'cac_test_postcode');
-			body.append('nonce', pc.nonce);
-			body.append('postcode', value);
-
-			fetch(cacAdmin.ajaxUrl, {
-				method: 'POST',
-				credentials: 'same-origin',
-				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-				body: body.toString()
-			})
-				.then(function (response) { return response.json(); })
+			post('cac_test_postcode', { nonce: pc.nonce, postcode: value })
 				.then(function (res) {
 					if (res && res.success && res.data) {
-						renderPostcode(res.data);
+						render(res.data);
 					} else {
-						pcOut.innerHTML = '<div class="notice notice-error inline"><p>' + escapeHtml(pc.failed) + '</p></div>';
+						out.innerHTML = errorNotice(pc.failed);
 					}
 				})
 				.catch(function () {
-					pcOut.innerHTML = '<div class="notice notice-error inline"><p>' + escapeHtml(pc.failed) + '</p></div>';
+					out.innerHTML = errorNotice(pc.failed);
 				})
-				.then(function () { pcBtn.disabled = false; });
-		};
+				.then(function () { btn.disabled = false; });
+		}
 
-		pcBtn.addEventListener('click', function (event) {
+		btn.addEventListener('click', function (event) {
 			event.preventDefault();
-			runPostcode();
+			run();
 		});
 
-		pcInput.addEventListener('keydown', function (event) {
+		input.addEventListener('keydown', function (event) {
 			if (event.key === 'Enter') {
 				event.preventDefault();
-				runPostcode();
+				run();
 			}
 		});
-	}
+	})();
 })();
