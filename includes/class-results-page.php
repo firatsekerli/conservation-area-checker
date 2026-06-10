@@ -235,12 +235,95 @@ class CAC_Results_Page {
 	}
 
 	/**
-	 * In-area result container. JavaScript completes the polygon check.
+	 * In-area result. Uses the live Planning Data API when selected, rendering
+	 * the answer server-side. Falls back to the client-side GeoJSON check if
+	 * the API is unreachable or GeoJSON mode is selected.
 	 *
 	 * @param array $location Normalised location data.
 	 * @return string
 	 */
 	private function render_in_area( $location ) {
+		if ( 'geojson' !== CAC_Settings::get( 'data_source' ) ) {
+			$areas = $this->geo->check_planning_areas( $location['latitude'], $location['longitude'] );
+			if ( ! is_wp_error( $areas ) ) {
+				return $this->render_server_result( ! empty( $areas['conservation'] ), ! empty( $areas['article4'] ) );
+			}
+			// API failed: fall through to the client-side GeoJSON check.
+		}
+
+		return $this->render_client_result( $location );
+	}
+
+	/**
+	 * Map the two booleans to a result state: class plus message keys.
+	 *
+	 * @param bool $conservation In a conservation area.
+	 * @param bool $article4     In an Article 4 Direction area.
+	 * @return array array( 'class' => string, 'messages' => string[] ).
+	 */
+	private function result_state( $conservation, $article4 ) {
+		if ( $conservation && $article4 ) {
+			return array(
+				'class'    => 'cac-state-both',
+				'messages' => array( CAC_Settings::get( 'msg_conservation' ), CAC_Settings::get( 'msg_article4' ) ),
+			);
+		}
+		if ( $conservation ) {
+			return array(
+				'class'    => 'cac-state-conservation',
+				'messages' => array( CAC_Settings::get( 'msg_conservation' ) ),
+			);
+		}
+		if ( $article4 ) {
+			return array(
+				'class'    => 'cac-state-article4',
+				'messages' => array( CAC_Settings::get( 'msg_article4' ) ),
+			);
+		}
+		return array(
+			'class'    => 'cac-state-none',
+			'messages' => array( CAC_Settings::get( 'msg_none' ) ),
+		);
+	}
+
+	/**
+	 * Render the result fully server-side (live API path, no JavaScript).
+	 *
+	 * @param bool $conservation In a conservation area.
+	 * @param bool $article4     In an Article 4 Direction area.
+	 * @return string
+	 */
+	private function render_server_result( $conservation, $article4 ) {
+		$state = $this->result_state( $conservation, $article4 );
+
+		$inner = '';
+		foreach ( $state['messages'] as $message ) {
+			if ( '' !== $message ) {
+				$inner .= '<p>' . esc_html( $message ) . '</p>';
+			}
+		}
+
+		ob_start();
+		?>
+		<div class="cac-checker">
+			<div class="cac-result <?php echo esc_attr( $state['class'] ); ?>">
+				<div class="cac-result-inner"><?php echo $inner; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- each message escaped above. ?></div>
+				<?php echo $this->disclaimer_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
+			</div>
+			<?php echo $this->advisory_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
+			<?php echo $this->cta_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * In-area result container completed by JavaScript (GeoJSON file path).
+	 *
+	 * @param array $location Normalised location data.
+	 * @return string
+	 */
+	private function render_client_result( $location ) {
 		$coords = wp_json_encode(
 			array(
 				'lat' => $location['latitude'],

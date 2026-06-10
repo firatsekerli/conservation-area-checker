@@ -206,4 +206,98 @@ class CAC_Geocheck {
 		return $this->is_allowed_area( $location['admin_county'] )
 			|| $this->is_allowed_area( $location['admin_district'] );
 	}
+
+	/**
+	 * Live check: does a point fall inside a conservation area and/or an
+	 * Article 4 Direction area, using the official Planning Data API.
+	 *
+	 * This avoids hosting GeoJSON files. Results are cached so repeat checks of
+	 * the same postcode do not call the API again.
+	 *
+	 * @param float $lat Latitude.
+	 * @param float $lon Longitude.
+	 * @return array|WP_Error array( 'conservation' => bool, 'article4' => bool ).
+	 */
+	public function check_planning_areas( $lat, $lon ) {
+		$conservation = $this->query_planning_dataset( 'conservation-area', $lat, $lon );
+		if ( is_wp_error( $conservation ) ) {
+			return $conservation;
+		}
+
+		$article4 = $this->query_planning_dataset( 'article-4-direction-area', $lat, $lon );
+		if ( is_wp_error( $article4 ) ) {
+			return $article4;
+		}
+
+		return array(
+			'conservation' => $conservation,
+			'article4'     => $article4,
+		);
+	}
+
+	/**
+	 * Ask the Planning Data API whether a point intersects any entity in a
+	 * dataset. Caches the boolean answer in a transient.
+	 *
+	 * @param string $dataset Planning Data dataset slug.
+	 * @param float  $lat     Latitude.
+	 * @param float  $lon     Longitude.
+	 * @return bool|WP_Error
+	 */
+	private function query_planning_dataset( $dataset, $lat, $lon ) {
+		$cache_key = 'cac_pd_' . $dataset . '_' . round( (float) $lat, 5 ) . '_' . round( (float) $lon, 5 );
+		$cached    = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return ( '1' === $cached );
+		}
+
+		// Filterable in case the API path needs adjusting without a code change.
+		$base = apply_filters( 'cac_planning_api_base', 'https://www.planning.data.gov.uk/entity.json' );
+
+		// GeoJSON / WKT coordinate order is longitude then latitude.
+		$query = http_build_query(
+			array(
+				'dataset'           => $dataset,
+				'geometry_relation' => 'intersects',
+				'geometry'          => sprintf( 'POINT(%s %s)', (float) $lon, (float) $lat ),
+				'limit'             => 1,
+			)
+		);
+
+		$response = wp_remote_get(
+			$base . '?' . $query,
+			array(
+				'timeout' => 8,
+				'headers' => array( 'Accept' => 'application/json' ),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+			return new WP_Error( 'cac_planning_http', __( 'The planning data service did not respond as expected.', 'conservation-area-checker' ) );
+		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $body ) ) {
+			return new WP_Error( 'cac_planning_parse', __( 'The planning data response could not be read.', 'conservation-area-checker' ) );
+		}
+
+		if ( isset( $body['count'] ) ) {
+			$count = (int) $body['count'];
+		} elseif ( isset( $body['entities'] ) && is_array( $body['entities'] ) ) {
+			$count = count( $body['entities'] );
+		} else {
+			$count = 0;
+		}
+
+		$inside = ( $count > 0 );
+
+		// Boundaries change rarely, so cache for a month.
+		set_transient( $cache_key, $inside ? '1' : '0', 30 * DAY_IN_SECONDS );
+
+		return $inside;
+	}
 }

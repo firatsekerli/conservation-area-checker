@@ -69,6 +69,7 @@ class CAC_Settings {
 					'Windsor and Maidenhead',
 				)
 			),
+			'data_source'        => 'api',
 			'conservation_url'   => '',
 			'article4_url'       => '',
 			'cta_heading'        => 'Not sure what applies to your home? Book a free survey and our team will check everything for you.',
@@ -205,6 +206,9 @@ class CAC_Settings {
 		if ( isset( $input['allowed_areas'] ) ) {
 			$output['allowed_areas'] = sanitize_textarea_field( $input['allowed_areas'] );
 		}
+		if ( isset( $input['data_source'] ) ) {
+			$output['data_source'] = ( 'geojson' === $input['data_source'] ) ? 'geojson' : 'api';
+		}
 		if ( isset( $input['conservation_url'] ) ) {
 			$output['conservation_url'] = esc_url_raw( trim( $input['conservation_url'] ) );
 		}
@@ -294,11 +298,27 @@ class CAC_Settings {
 					</tr>
 				</table>
 
-				<h2 class="title"><?php esc_html_e( 'Boundary data (GeoJSON)', 'conservation-area-checker' ); ?></h2>
-				<p class="description">
-					<?php esc_html_e( 'The conservation area and Article 4 checks run against GeoJSON boundary files. Leave these blank to use the files bundled in the plugin data/ folder: the plugin uses data/conservation-areas.json and data/article-4-areas.json when present, and falls back to the bundled sample until you add them. To build real filtered files for your region, run tools/build-datasets.php. Set a full URL below to load data from elsewhere instead, for example a serverless endpoint.', 'conservation-area-checker' ); ?>
-				</p>
+				<h2 class="title"><?php esc_html_e( 'Boundary data', 'conservation-area-checker' ); ?></h2>
+				<?php $source = self::get( 'data_source' ); ?>
 				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Data source', 'conservation-area-checker' ); ?></th>
+						<td>
+							<fieldset>
+								<label>
+									<input type="radio" name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[data_source]" value="api" <?php checked( 'geojson' !== $source ); ?> />
+									<?php esc_html_e( 'Live Planning Data lookup (recommended)', 'conservation-area-checker' ); ?>
+								</label>
+								<p class="description"><?php esc_html_e( 'Checks the official government conservation area and Article 4 data over the internet for each postcode, and caches the answer. Nothing to host or upload, and the data stays current. Your server must be able to reach planning.data.gov.uk.', 'conservation-area-checker' ); ?></p>
+								<br />
+								<label>
+									<input type="radio" name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[data_source]" value="geojson" <?php checked( 'geojson' === $source ); ?> />
+									<?php esc_html_e( 'GeoJSON files', 'conservation-area-checker' ); ?>
+								</label>
+								<p class="description"><?php esc_html_e( 'Checks boundary files instead. Uses data/conservation-areas.json and data/article-4-areas.json when present (build them with tools/build-datasets.php), or the URLs below, or the bundled sample as a last resort. This is also the automatic fallback if the live lookup ever fails.', 'conservation-area-checker' ); ?></p>
+							</fieldset>
+						</td>
+					</tr>
 					<tr>
 						<th scope="row"><label for="cac_conservation_url"><?php esc_html_e( 'Conservation area GeoJSON URL', 'conservation-area-checker' ); ?></label></th>
 						<td><input name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[conservation_url]" id="cac_conservation_url" type="url" class="large-text" placeholder="<?php echo esc_attr( CAC_URL . 'data/conservation-areas.json' ); ?>" value="<?php echo esc_attr( self::get( 'conservation_url' ) ); ?>" /></td>
