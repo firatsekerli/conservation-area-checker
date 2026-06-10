@@ -36,6 +36,7 @@ class CAC_Settings {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin' ) );
 		add_action( 'wp_ajax_cac_test_connection', array( $this, 'ajax_test_connection' ) );
+		add_action( 'wp_ajax_cac_test_postcode', array( $this, 'ajax_test_postcode' ) );
 	}
 
 	/**
@@ -66,6 +67,36 @@ class CAC_Settings {
 				'okMsg'   => __( 'Connected. The live lookup can reach the planning data service.', 'conservation-area-checker' ),
 				'failMsg' => __( 'There is a problem reaching the planning data service. See the details below.', 'conservation-area-checker' ),
 				'failed'  => __( 'The test could not be completed. Please try again.', 'conservation-area-checker' ),
+				'pc'      => array(
+					'nonce'    => wp_create_nonce( 'cac_test_postcode' ),
+					'checking' => __( 'Checking postcode...', 'conservation-area-checker' ),
+					'enter'    => __( 'Please enter a postcode.', 'conservation-area-checker' ),
+					'failed'   => __( 'The check could not be completed. Please try again.', 'conservation-area-checker' ),
+					'yes'      => __( 'Yes', 'conservation-area-checker' ),
+					'no'       => __( 'No', 'conservation-area-checker' ),
+					'none'     => __( '(none returned)', 'conservation-area-checker' ),
+					'labels'   => array(
+						'postcode'     => __( 'Postcode', 'conservation-area-checker' ),
+						'coords'       => __( 'Coordinates', 'conservation-area-checker' ),
+						'county'       => __( 'County (admin_county)', 'conservation-area-checker' ),
+						'district'     => __( 'District (admin_district)', 'conservation-area-checker' ),
+						'constituency' => __( 'Constituency', 'conservation-area-checker' ),
+						'distance'     => __( 'Distance from service centre', 'conservation-area-checker' ),
+						'inArea'       => __( 'In service area', 'conservation-area-checker' ),
+						'conservation' => __( 'Conservation area', 'conservation-area-checker' ),
+						'article4'     => __( 'Article 4 Direction area', 'conservation-area-checker' ),
+						'final'        => __( 'Result shown to visitor', 'conservation-area-checker' ),
+						'miles'        => __( 'miles', 'conservation-area-checker' ),
+					),
+					'states'   => array(
+						'outside'      => __( 'Outside service area', 'conservation-area-checker' ),
+						'none'         => __( 'No restrictions found', 'conservation-area-checker' ),
+						'conservation' => __( 'Conservation area', 'conservation-area-checker' ),
+						'article4'     => __( 'Article 4 Direction', 'conservation-area-checker' ),
+						'both'         => __( 'Conservation area and Article 4', 'conservation-area-checker' ),
+						'unknown'      => __( 'Could not check planning data', 'conservation-area-checker' ),
+					),
+				),
 			)
 		);
 	}
@@ -106,6 +137,74 @@ class CAC_Settings {
 				'checks' => $checks,
 			)
 		);
+	}
+
+	/**
+	 * AJAX: run a postcode through the full live pipeline and report the
+	 * breakdown, so an admin can spot-check results and see why a postcode
+	 * gives a particular answer.
+	 */
+	public function ajax_test_postcode() {
+		check_ajax_referer( 'cac_test_postcode', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'conservation-area-checker' ) ), 403 );
+		}
+
+		$postcode = isset( $_POST['postcode'] ) ? sanitize_text_field( wp_unslash( $_POST['postcode'] ) ) : '';
+		$geo      = new CAC_Geocheck();
+		$result   = array( 'postcode' => $postcode );
+
+		if ( ! $geo->is_valid_format( $postcode ) ) {
+			$result['error'] = __( 'That does not look like a valid UK postcode.', 'conservation-area-checker' );
+			wp_send_json_success( $result );
+		}
+
+		$location = $geo->lookup( $postcode );
+		if ( is_wp_error( $location ) ) {
+			$result['error'] = $location->get_error_message();
+			wp_send_json_success( $result );
+		}
+
+		$result['found']        = true;
+		$result['postcode']     = $location['postcode'];
+		$result['lat']          = $location['latitude'];
+		$result['lon']          = $location['longitude'];
+		$result['county']       = $location['admin_county'];
+		$result['district']     = $location['admin_district'];
+		$result['constituency'] = $location['parliamentary_constituency'];
+		$result['distance']     = round( $geo->distance_from_centre( $location['latitude'], $location['longitude'] ), 1 );
+
+		$in_area           = $geo->is_in_service_area( $location );
+		$result['in_area'] = $in_area;
+
+		// Always query the live data so the admin can see the real answer, even
+		// for out-of-area postcodes that a visitor would not get this far on.
+		$areas = $geo->check_planning_areas( $location['latitude'], $location['longitude'] );
+		if ( is_wp_error( $areas ) ) {
+			$result['planning_error'] = $areas->get_error_message();
+			$result['conservation']   = null;
+			$result['article4']       = null;
+		} else {
+			$result['conservation'] = (bool) $areas['conservation'];
+			$result['article4']     = (bool) $areas['article4'];
+		}
+
+		// The state a visitor would actually see.
+		if ( ! $in_area ) {
+			$result['final'] = 'outside';
+		} elseif ( null === $result['conservation'] ) {
+			$result['final'] = 'unknown';
+		} elseif ( $result['conservation'] && $result['article4'] ) {
+			$result['final'] = 'both';
+		} elseif ( $result['conservation'] ) {
+			$result['final'] = 'conservation';
+		} elseif ( $result['article4'] ) {
+			$result['final'] = 'article4';
+		} else {
+			$result['final'] = 'none';
+		}
+
+		wp_send_json_success( $result );
 	}
 
 	/**
@@ -389,6 +488,14 @@ class CAC_Settings {
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Conservation Area Checker', 'conservation-area-checker' ); ?></h1>
 			<p><?php esc_html_e( 'Configure the service area and the call to action. Add the [conservation_postcode_search] shortcode anywhere to show the postcode search form.', 'conservation-area-checker' ); ?></p>
+
+			<h2 class="title"><?php esc_html_e( 'Check a postcode', 'conservation-area-checker' ); ?></h2>
+			<p class="description"><?php esc_html_e( 'Run any postcode through the live checks and see the full breakdown. This reflects the live planning data lookup. Nothing is saved.', 'conservation-area-checker' ); ?></p>
+			<p>
+				<input type="text" id="cac-pc-input" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. GU51 4BY', 'conservation-area-checker' ); ?>" autocomplete="off" />
+				<button type="button" class="button button-secondary" id="cac-pc-btn"><?php esc_html_e( 'Check postcode', 'conservation-area-checker' ); ?></button>
+			</p>
+			<div id="cac-pc-result"></div>
 
 			<form method="post" action="options.php">
 				<?php settings_fields( self::GROUP ); ?>
