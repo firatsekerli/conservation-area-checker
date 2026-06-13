@@ -302,6 +302,7 @@ class CAC_Settings {
 				)
 			),
 			'data_source'        => 'api',
+			'match_buffer_m'     => '100',
 			'conservation_url'   => '',
 			'article4_url'       => '',
 			'cta_heading'        => 'Not sure what applies to your home? Book a free survey and our team will check everything for you.',
@@ -444,6 +445,10 @@ class CAC_Settings {
 		if ( isset( $input['data_source'] ) ) {
 			$output['data_source'] = ( 'geojson' === $input['data_source'] ) ? 'geojson' : 'api';
 		}
+		if ( isset( $input['match_buffer_m'] ) ) {
+			$buffer                   = (float) $input['match_buffer_m'];
+			$output['match_buffer_m'] = (string) ( $buffer > 0 ? $buffer : 0 );
+		}
 		if ( isset( $input['conservation_url'] ) ) {
 			$output['conservation_url'] = esc_url_raw( trim( $input['conservation_url'] ) );
 		}
@@ -579,6 +584,13 @@ class CAC_Settings {
 								</label>
 								<p class="description"><?php esc_html_e( 'Checks boundary files instead. Uses data/conservation-areas.json and data/article-4-areas.json when present (build them with tools/build-datasets.php), or the URLs below, or the bundled sample as a last resort. This is also the automatic fallback if the live lookup ever fails.', 'conservation-area-checker' ); ?></p>
 							</fieldset>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="cac_match_buffer_m"><?php esc_html_e( 'Match tolerance (metres)', 'conservation-area-checker' ); ?></label></th>
+						<td>
+							<input name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[match_buffer_m]" id="cac_match_buffer_m" type="number" min="0" step="10" class="small-text" value="<?php echo esc_attr( self::get( 'match_buffer_m' ) ); ?>" />
+							<p class="description"><?php esc_html_e( 'Postcode locations are approximate, and some conservation areas are very small. If the exact point is not inside an area, the plugin also checks within this many metres of it. Increase to catch more near-miss cases, or set to 0 to match the exact point only. Applies to the live lookup.', 'conservation-area-checker' ); ?></p>
 						</td>
 					</tr>
 					<tr>

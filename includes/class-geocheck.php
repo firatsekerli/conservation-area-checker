@@ -236,8 +236,13 @@ class CAC_Geocheck {
 	}
 
 	/**
-	 * Ask the Planning Data API whether a point intersects any entity in a
+	 * Ask the Planning Data API whether a point falls inside any entity in a
 	 * dataset. Caches the boolean answer in a transient.
+	 *
+	 * Postcode centre points are approximate, and some conservation areas are
+	 * very small, so an exact-point miss is rechecked against a small tolerance
+	 * box around the point. The buffered query is a fallback: if the API does
+	 * not support it the exact-point answer still stands.
 	 *
 	 * @param string $dataset Planning Data dataset slug.
 	 * @param float  $lat     Latitude.
@@ -245,21 +250,51 @@ class CAC_Geocheck {
 	 * @return bool|WP_Error
 	 */
 	private function query_planning_dataset( $dataset, $lat, $lon ) {
-		$cache_key = 'cac_pd_' . $dataset . '_' . round( (float) $lat, 5 ) . '_' . round( (float) $lon, 5 );
-		$cached    = get_transient( $cache_key );
+		$buffer    = (float) apply_filters( 'cac_match_buffer_m', (float) CAC_Settings::get( 'match_buffer_m' ) );
+		$cache_key = 'cac_pd_' . $dataset . '_' . round( (float) $lat, 5 ) . '_' . round( (float) $lon, 5 ) . '_' . (int) round( $buffer );
+
+		$cached = get_transient( $cache_key );
 		if ( false !== $cached ) {
 			return ( '1' === $cached );
 		}
 
-		// Filterable in case the API path needs adjusting without a code change.
+		// 1) Exact point.
+		$count = $this->planning_count( $dataset, sprintf( 'POINT(%s %s)', (float) $lon, (float) $lat ) );
+		if ( is_wp_error( $count ) ) {
+			return $count;
+		}
+		$inside = ( $count > 0 );
+
+		// 2) Tolerance box, to allow for imprecise centres and tiny areas.
+		if ( ! $inside && $buffer > 0 ) {
+			$box = $this->buffer_polygon( (float) $lat, (float) $lon, $buffer );
+			$box_count = $this->planning_count( $dataset, $box );
+			if ( ! is_wp_error( $box_count ) && $box_count > 0 ) {
+				$inside = true;
+			}
+		}
+
+		// Boundaries change rarely, so cache for a month.
+		set_transient( $cache_key, $inside ? '1' : '0', 30 * DAY_IN_SECONDS );
+
+		return $inside;
+	}
+
+	/**
+	 * Count Planning Data entities of a dataset intersecting a WKT geometry.
+	 *
+	 * @param string $dataset Dataset slug.
+	 * @param string $wkt     WKT geometry (POINT or POLYGON).
+	 * @return int|WP_Error
+	 */
+	private function planning_count( $dataset, $wkt ) {
 		$base = apply_filters( 'cac_planning_api_base', 'https://www.planning.data.gov.uk/entity.json' );
 
-		// GeoJSON / WKT coordinate order is longitude then latitude.
 		$query = http_build_query(
 			array(
 				'dataset'           => $dataset,
 				'geometry_relation' => 'intersects',
-				'geometry'          => sprintf( 'POINT(%s %s)', (float) $lon, (float) $lat ),
+				'geometry'          => $wkt,
 				'limit'             => 1,
 			)
 		);
@@ -286,18 +321,38 @@ class CAC_Geocheck {
 		}
 
 		if ( isset( $body['count'] ) ) {
-			$count = (int) $body['count'];
-		} elseif ( isset( $body['entities'] ) && is_array( $body['entities'] ) ) {
-			$count = count( $body['entities'] );
-		} else {
-			$count = 0;
+			return (int) $body['count'];
+		}
+		if ( isset( $body['entities'] ) && is_array( $body['entities'] ) ) {
+			return count( $body['entities'] );
 		}
 
-		$inside = ( $count > 0 );
+		return 0;
+	}
 
-		// Boundaries change rarely, so cache for a month.
-		set_transient( $cache_key, $inside ? '1' : '0', 30 * DAY_IN_SECONDS );
+	/**
+	 * Build a small square WKT polygon (a tolerance box) around a point.
+	 *
+	 * @param float $lat    Latitude.
+	 * @param float $lon    Longitude.
+	 * @param float $meters Half-width of the box in metres.
+	 * @return string WKT POLYGON, coordinates in longitude latitude order.
+	 */
+	private function buffer_polygon( $lat, $lon, $meters ) {
+		$lat_delta = $meters / 111320.0;
+		$lon_delta = $meters / ( 111320.0 * max( 0.01, cos( deg2rad( $lat ) ) ) );
 
-		return $inside;
+		$min_lon = $lon - $lon_delta;
+		$max_lon = $lon + $lon_delta;
+		$min_lat = $lat - $lat_delta;
+		$max_lat = $lat + $lat_delta;
+
+		return sprintf(
+			'POLYGON((%1$.6f %2$.6f, %3$.6f %2$.6f, %3$.6f %4$.6f, %1$.6f %4$.6f, %1$.6f %2$.6f))',
+			$min_lon,
+			$min_lat,
+			$max_lon,
+			$max_lat
+		);
 	}
 }
