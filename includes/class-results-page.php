@@ -114,11 +114,16 @@ class CAC_Results_Page {
 			return $this->render_lookup_error( $raw_postcode, $location->get_error_message() );
 		}
 
-		if ( ! $this->geo->is_in_service_area( $location ) ) {
+		$in_area = $this->geo->is_in_service_area( $location );
+
+		// In "restrict" mode the service area gates the result. In the default
+		// "open" mode the conservation check runs for anyone, and the service
+		// area only decides whether the survey call to action is shown.
+		if ( 'restrict' === CAC_Settings::get( 'service_mode' ) && ! $in_area ) {
 			return $this->render_out_of_area();
 		}
 
-		return $this->render_in_area( $location );
+		return $this->render_in_area( $location, $in_area );
 	}
 
 	/**
@@ -242,16 +247,30 @@ class CAC_Results_Page {
 	 * @param array $location Normalised location data.
 	 * @return string
 	 */
-	private function render_in_area( $location ) {
+	private function render_in_area( $location, $in_area = true ) {
 		if ( 'geojson' !== CAC_Settings::get( 'data_source' ) ) {
 			$areas = $this->geo->check_planning_areas( $location['latitude'], $location['longitude'] );
 			if ( ! is_wp_error( $areas ) ) {
-				return $this->render_server_result( ! empty( $areas['conservation'] ), ! empty( $areas['article4'] ) );
+				return $this->render_server_result( ! empty( $areas['conservation'] ), ! empty( $areas['article4'] ), $in_area );
 			}
 			// API failed: fall through to the client-side GeoJSON check.
 		}
 
-		return $this->render_client_result( $location );
+		return $this->render_client_result( $location, $in_area );
+	}
+
+	/**
+	 * Show the survey call to action for in-area visitors, or a short note
+	 * about the install area for those outside it (open mode only).
+	 *
+	 * @param bool $in_area Whether the postcode is inside the service area.
+	 * @return string
+	 */
+	private function cta_or_note( $in_area ) {
+		if ( $in_area ) {
+			return $this->cta_html();
+		}
+		return '<p class="cac-note">' . esc_html( $this->out_of_area_message() ) . '</p>';
 	}
 
 	/**
@@ -293,7 +312,7 @@ class CAC_Results_Page {
 	 * @param bool $article4     In an Article 4 Direction area.
 	 * @return string
 	 */
-	private function render_server_result( $conservation, $article4 ) {
+	private function render_server_result( $conservation, $article4, $in_area = true ) {
 		$state = $this->result_state( $conservation, $article4 );
 
 		$inner = '';
@@ -311,7 +330,7 @@ class CAC_Results_Page {
 				<?php echo $this->disclaimer_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
 			</div>
 			<?php echo $this->advisory_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
-			<?php echo $this->cta_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
+			<?php echo $this->cta_or_note( $in_area ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
 		</div>
 		<?php
 		return ob_get_clean();
@@ -323,7 +342,7 @@ class CAC_Results_Page {
 	 * @param array $location Normalised location data.
 	 * @return string
 	 */
-	private function render_client_result( $location ) {
+	private function render_client_result( $location, $in_area = true ) {
 		$coords = wp_json_encode(
 			array(
 				'lat' => $location['latitude'],
@@ -353,7 +372,7 @@ class CAC_Results_Page {
 				<?php echo $this->disclaimer_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
 			</div>
 			<?php echo $this->advisory_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
-			<?php echo $this->cta_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
+			<?php echo $this->cta_or_note( $in_area ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within helper. ?>
 		</div>
 		<?php
 		return ob_get_clean();

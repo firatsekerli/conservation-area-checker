@@ -126,6 +126,17 @@
 	color: #4b5563;
 }
 
+/* Soft note shown to out-of-area visitors in serve-anyone mode. */
+.cac-checker .cac-note {
+	margin: 0;
+	padding: 0.85rem 1rem;
+	font-size: 0.95rem;
+	color: #4b5563;
+	background: #F7F7F9;
+	border-left: 4px solid #6b7280;
+	border-radius: 8px;
+}
+
 /* State colours applied to the left border. */
 .cac-checker .cac-state-loading {
 	border-left-color: #9ca3af;

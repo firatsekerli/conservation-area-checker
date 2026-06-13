@@ -3,7 +3,7 @@
  * Plugin Name: Conservation Area Checker
  * Plugin URI: https://asparagents.com/
  * Description: Lets visitors enter a UK postcode anywhere on the site via a shortcode, then redirects them to a dedicated results page that checks the service area, conservation areas, and Article 4 Direction areas. Service area, allowed counties, and the call to action are configurable from the settings page.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: asparagents
  * Author URI: https://asparagents.com/
  * Text Domain: conservation-area-checker
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Core constants used across the plugin.
-define( 'CAC_VERSION', '1.0.1' );
+define( 'CAC_VERSION', '1.0.2' );
 define( 'CAC_FILE', __FILE__ );
 define( 'CAC_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CAC_URL', plugin_dir_url( __FILE__ ) );

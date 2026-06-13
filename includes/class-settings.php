@@ -189,8 +189,8 @@ class CAC_Settings {
 			$result['article4']     = (bool) $areas['article4'];
 		}
 
-		// The state a visitor would actually see.
-		if ( ! $in_area ) {
+		// The state a visitor would actually see, honouring the service mode.
+		if ( 'restrict' === self::get( 'service_mode' ) && ! $in_area ) {
 			$result['final'] = 'outside';
 		} elseif ( null === $result['conservation'] ) {
 			$result['final'] = 'unknown';
@@ -276,6 +276,7 @@ class CAC_Settings {
 	 */
 	public static function defaults() {
 		return array(
+			'service_mode'       => 'open',
 			'centre_label'       => 'Fleet',
 			'centre_lat'         => '51.2832',
 			'centre_lon'         => '-0.8444',
@@ -418,6 +419,9 @@ class CAC_Settings {
 		$input  = is_array( $input ) ? $input : array();
 		$output = self::defaults();
 
+		if ( isset( $input['service_mode'] ) ) {
+			$output['service_mode'] = ( 'restrict' === $input['service_mode'] ) ? 'restrict' : 'open';
+		}
 		if ( isset( $input['centre_label'] ) ) {
 			$output['centre_label'] = sanitize_text_field( $input['centre_label'] );
 		}
@@ -501,7 +505,26 @@ class CAC_Settings {
 				<?php settings_fields( self::GROUP ); ?>
 
 				<h2 class="title"><?php esc_html_e( 'Service area', 'conservation-area-checker' ); ?></h2>
+				<?php $mode = self::get( 'service_mode' ); ?>
 				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Who gets a result', 'conservation-area-checker' ); ?></th>
+						<td>
+							<fieldset>
+								<label>
+									<input type="radio" name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[service_mode]" value="open" <?php checked( 'restrict' !== $mode ); ?> />
+									<?php esc_html_e( 'Serve anyone (recommended)', 'conservation-area-checker' ); ?>
+								</label>
+								<p class="description"><?php esc_html_e( 'Any UK postcode gets a conservation area and Article 4 result. The Book a survey button is shown only to visitors inside your service area; those outside see a short note that you install within your radius instead.', 'conservation-area-checker' ); ?></p>
+								<br />
+								<label>
+									<input type="radio" name="<?php echo esc_attr( CAC_SETTINGS_OPTION ); ?>[service_mode]" value="restrict" <?php checked( 'restrict' === $mode ); ?> />
+									<?php esc_html_e( 'Restrict to service area', 'conservation-area-checker' ); ?>
+								</label>
+								<p class="description"><?php esc_html_e( 'Postcodes outside your service area get the out-of-area message and no conservation result.', 'conservation-area-checker' ); ?></p>
+							</fieldset>
+						</td>
+					</tr>
 					<tr>
 						<th scope="row"><label for="cac_centre_label"><?php esc_html_e( 'Service centre name', 'conservation-area-checker' ); ?></label></th>
 						<td>
