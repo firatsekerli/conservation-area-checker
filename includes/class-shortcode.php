@@ -26,19 +26,37 @@ class CAC_Shortcode {
 	}
 
 	/**
-	 * Render the postcode entry form.
+	 * Render the shortcode.
 	 *
-	 * Works in Breakdance Custom Code blocks, Classic and Block editor Custom
-	 * HTML blocks, text widgets, and any page or post, because it is a standard
-	 * shortcode and enqueues its own assets on demand.
+	 * Self-contained so it works anywhere, including page builders such as
+	 * Breakdance that bypass the the_content filter. When the URL carries a
+	 * postcode it renders the full results; otherwise it renders the form.
 	 *
 	 * @param array $atts Shortcode attributes (unused, reserved for future use).
-	 * @return string Form markup.
+	 * @return string
 	 */
 	public function render( $atts = array() ) {
 		// Enqueue assets here so they load only where the shortcode appears.
 		cac()->enqueue_assets();
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only public tool.
+		$has_postcode = isset( $_GET['postcode'] ) && '' !== trim( (string) wp_unslash( $_GET['postcode'] ) );
+		if ( $has_postcode ) {
+			return cac()->results_page->render_output();
+		}
+
+		return $this->form_html();
+	}
+
+	/**
+	 * The postcode entry form markup.
+	 *
+	 * Works in Breakdance Custom Code blocks, Classic and Block editor Custom
+	 * HTML blocks, text widgets, and any page or post.
+	 *
+	 * @return string Form markup.
+	 */
+	public function form_html() {
 		ob_start();
 		?>
 		<div class="cac-checker">

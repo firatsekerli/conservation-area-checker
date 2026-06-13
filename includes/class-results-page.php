@@ -84,17 +84,24 @@ class CAC_Results_Page {
 			return $content;
 		}
 
+		// If the page already contains the shortcode (for example added via a
+		// page builder), let the shortcode render it and do not inject again.
+		if ( has_shortcode( $content, 'conservation_postcode_search' ) ) {
+			return $content;
+		}
+
 		cac()->enqueue_assets();
 
-		return $this->render();
+		return $this->render_output();
 	}
 
 	/**
-	 * Build the full checker output for the results page.
+	 * Build the full checker output: the form when no postcode is present, or
+	 * the result when one is. Public so the shortcode can call it too.
 	 *
 	 * @return string
 	 */
-	private function render() {
+	public function render_output() {
 		// Read-only public tool, so no nonce is needed for this GET parameter.
 		// If a future version posted this form to the database, verify a nonce
 		// here with check_admin_referer() or wp_verify_nonce() before saving.
@@ -141,7 +148,7 @@ class CAC_Results_Page {
 		</div>
 		<?php
 		// Reuse the shortcode form so behaviour stays consistent.
-		$form = do_shortcode( '[conservation_postcode_search]' );
+		$form = cac()->shortcode->form_html();
 		return ob_get_clean() . $form;
 	}
 
@@ -170,7 +177,7 @@ class CAC_Results_Page {
 			</div>
 		</div>
 		<?php
-		$form = do_shortcode( '[conservation_postcode_search]' );
+		$form = cac()->shortcode->form_html();
 		return ob_get_clean() . $form;
 	}
 
@@ -192,7 +199,7 @@ class CAC_Results_Page {
 			</div>
 		</div>
 		<?php
-		$form = do_shortcode( '[conservation_postcode_search]' );
+		$form = cac()->shortcode->form_html();
 		return ob_get_clean() . $form;
 	}
 
