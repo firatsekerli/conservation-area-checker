@@ -126,6 +126,15 @@
 	color: #4b5563;
 }
 
+/* Inline mode: the result holder sits below the search form. */
+.cac-checker .cac-inline-result {
+	margin-top: 1rem;
+}
+
+.cac-checker .cac-inline-result:empty {
+	margin-top: 0;
+}
+
 /* Soft note shown to out-of-area visitors in serve-anyone mode. */
 .cac-checker .cac-note {
 	margin: 0;

@@ -39,6 +39,18 @@ class CAC_Results_Page {
 	 */
 	public function register() {
 		add_filter( 'the_content', array( $this, 'maybe_render' ) );
+		add_action( 'wp_ajax_cac_check', array( $this, 'ajax_check' ) );
+		add_action( 'wp_ajax_nopriv_cac_check', array( $this, 'ajax_check' ) );
+	}
+
+	/**
+	 * AJAX: return the result HTML for a postcode, used by inline mode so the
+	 * page does not reload. Read-only public tool, so no nonce (the same as the
+	 * GET results page). The form is omitted because it stays on the page.
+	 */
+	public function ajax_check() {
+		$postcode = isset( $_POST['postcode'] ) ? sanitize_text_field( wp_unslash( $_POST['postcode'] ) ) : '';
+		wp_send_json_success( array( 'html' => $this->render_output( $postcode, false ) ) );
 	}
 
 	/**
@@ -99,26 +111,35 @@ class CAC_Results_Page {
 	 * Build the full checker output: the form when no postcode is present, or
 	 * the result when one is. Public so the shortcode can call it too.
 	 *
+	 * @param string|null $postcode  Postcode to check. When null it is read from
+	 *                                the request query string.
+	 * @param bool        $with_form Whether to append the search form to the
+	 *                                "no postcode" and error states. Inline AJAX
+	 *                                passes false because the form stays put.
 	 * @return string
 	 */
-	public function render_output() {
-		// Read-only public tool, so no nonce is needed for this GET parameter.
+	public function render_output( $postcode = null, $with_form = true ) {
+		// Read-only public tool, so no nonce is needed for this parameter.
 		// If a future version posted this form to the database, verify a nonce
 		// here with check_admin_referer() or wp_verify_nonce() before saving.
-		$raw_postcode = isset( $_GET['postcode'] ) ? sanitize_text_field( wp_unslash( $_GET['postcode'] ) ) : '';
+		if ( null === $postcode ) {
+			$raw_postcode = isset( $_GET['postcode'] ) ? sanitize_text_field( wp_unslash( $_GET['postcode'] ) ) : '';
+		} else {
+			$raw_postcode = sanitize_text_field( $postcode );
+		}
 
 		if ( '' === $raw_postcode ) {
 			// No postcode supplied: the page is still useful as a search form.
-			return $this->render_form_intro();
+			return $with_form ? $this->render_form_intro() : '';
 		}
 
 		if ( ! $this->geo->is_valid_format( $raw_postcode ) ) {
-			return $this->render_invalid( $raw_postcode );
+			return $this->render_invalid( $raw_postcode, $with_form );
 		}
 
 		$location = $this->geo->lookup( $raw_postcode );
 		if ( is_wp_error( $location ) ) {
-			return $this->render_lookup_error( $raw_postcode, $location->get_error_message() );
+			return $this->render_lookup_error( $raw_postcode, $location->get_error_message(), $with_form );
 		}
 
 		$in_area = $this->geo->is_in_service_area( $location );
@@ -155,10 +176,11 @@ class CAC_Results_Page {
 	/**
 	 * Invalid-format message plus the form so the visitor can retry.
 	 *
-	 * @param string $postcode The rejected input.
+	 * @param string $postcode  The rejected input.
+	 * @param bool   $with_form Whether to append the search form.
 	 * @return string
 	 */
-	private function render_invalid( $postcode ) {
+	private function render_invalid( $postcode, $with_form = true ) {
 		ob_start();
 		?>
 		<div class="cac-checker">
@@ -177,18 +199,19 @@ class CAC_Results_Page {
 			</div>
 		</div>
 		<?php
-		$form = cac()->shortcode->form_html();
+		$form = $with_form ? cac()->shortcode->form_html() : '';
 		return ob_get_clean() . $form;
 	}
 
 	/**
 	 * Lookup-failure message plus the form so the visitor can retry.
 	 *
-	 * @param string $postcode The input that failed.
-	 * @param string $message  Human-readable error.
+	 * @param string $postcode  The input that failed.
+	 * @param string $message   Human-readable error.
+	 * @param bool   $with_form Whether to append the search form.
 	 * @return string
 	 */
-	private function render_lookup_error( $postcode, $message ) {
+	private function render_lookup_error( $postcode, $message, $with_form = true ) {
 		ob_start();
 		?>
 		<div class="cac-checker">
@@ -199,7 +222,7 @@ class CAC_Results_Page {
 			</div>
 		</div>
 		<?php
-		$form = cac()->shortcode->form_html();
+		$form = $with_form ? cac()->shortcode->form_html() : '';
 		return ob_get_clean() . $form;
 	}
 

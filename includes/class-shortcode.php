@@ -48,11 +48,20 @@ class CAC_Shortcode {
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only public tool.
 		$has_postcode = isset( $_GET['postcode'] ) && '' !== trim( (string) wp_unslash( $_GET['postcode'] ) );
+
+		if ( $inline ) {
+			// Keep the form on the page; show the result in a holder below it.
+			// Pre-fill the holder server-side so shared links and refreshes work
+			// without JavaScript. The AJAX path updates it without a reload.
+			$result = $has_postcode ? cac()->results_page->render_output( null, false ) : '';
+			return $this->form_html( true, $result );
+		}
+
 		if ( $has_postcode ) {
 			return cac()->results_page->render_output();
 		}
 
-		return $this->form_html( $inline );
+		return $this->form_html();
 	}
 
 	/**
@@ -61,11 +70,12 @@ class CAC_Shortcode {
 	 * Works in Breakdance Custom Code blocks, Classic and Block editor Custom
 	 * HTML blocks, text widgets, and any page or post.
 	 *
-	 * @param bool $inline When true, the form submits to the current page so the
-	 *                      result shows inline instead of on the results page.
+	 * @param bool   $inline      When true, the form stays on the page and a
+	 *                            result holder is rendered below it.
+	 * @param string $result_html Pre-rendered result HTML for the holder.
 	 * @return string Form markup.
 	 */
-	public function form_html( $inline = false ) {
+	public function form_html( $inline = false, $result_html = '' ) {
 		ob_start();
 		?>
 		<div class="cac-checker">
@@ -98,6 +108,9 @@ class CAC_Shortcode {
 					<?php esc_html_e( 'Please enter a valid UK postcode, for example GU51 4BY.', 'conservation-area-checker' ); ?>
 				</p>
 			</form>
+			<?php if ( $inline ) : ?>
+				<div class="cac-inline-result" data-cac-inline-result aria-live="polite"><?php echo $result_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- pre-rendered, escaped result markup. ?></div>
+			<?php endif; ?>
 		</div>
 		<?php
 		return ob_get_clean();

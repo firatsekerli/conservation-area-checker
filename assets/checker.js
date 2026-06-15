@@ -91,16 +91,9 @@
 			// Strip spaces before appending to the URL, for example GU514BY.
 			var compact = value.replace(/\s+/g, '').toUpperCase();
 
-			// Inline mode: stay on the current page and just set the postcode,
-			// so the shortcode renders the result here instead of redirecting.
+			// Inline mode: fetch the result and show it in place, no reload.
 			if (form.getAttribute('data-cac-inline') === '1') {
-				try {
-					var here = new URL(window.location.href);
-					here.searchParams.set('postcode', compact);
-					window.location.href = here.toString();
-				} catch (e) {
-					window.location.href = window.location.pathname + '?postcode=' + encodeURIComponent(compact);
-				}
+				submitInline(form, compact);
 				return;
 			}
 
@@ -291,6 +284,12 @@
 	 * @param {HTMLElement} container
 	 */
 	function initResult(container) {
+		// Guard against double initialisation (load scan plus AJAX injection).
+		if (container.getAttribute('data-cac-init') === '1') {
+			return;
+		}
+		container.setAttribute('data-cac-init', '1');
+
 		var coords;
 		try {
 			coords = JSON.parse(container.getAttribute('data-coords'));
@@ -320,6 +319,73 @@
 
 			renderResult(container, inConservation, inArticle4);
 		});
+	}
+
+	/**
+	 * Inline submit: fetch the result over AJAX and show it below the form,
+	 * with no page reload (so the visitor is not thrown to the top) and the
+	 * search box left in place for another lookup.
+	 *
+	 * @param {HTMLFormElement} form
+	 * @param {string} compact Postcode with spaces removed.
+	 */
+	function submitInline(form, compact) {
+		var checker = form.closest ? form.closest('.cac-checker') : form.parentNode;
+		var holder = checker ? checker.querySelector('[data-cac-inline-result]') : null;
+		var cfg = window.cacChecker || {};
+
+		// Without a holder or the AJAX endpoint, fall back to a same-page reload.
+		if (!holder || !cfg.ajaxUrl) {
+			try {
+				var here = new URL(window.location.href);
+				here.searchParams.set('postcode', compact);
+				window.location.href = here.toString();
+			} catch (e) {
+				window.location.href = window.location.pathname + '?postcode=' + encodeURIComponent(compact);
+			}
+			return;
+		}
+
+		holder.innerHTML = '<p class="cac-loading">' + (cfg.loading || 'Checking...') + '</p>';
+
+		// Reflect the postcode in the address bar without reloading, so the
+		// result is shareable and survives a manual refresh.
+		try {
+			var url = new URL(window.location.href);
+			url.searchParams.set('postcode', compact);
+			window.history.replaceState(null, '', url.toString());
+		} catch (e) {}
+
+		var body = new URLSearchParams();
+		body.append('action', 'cac_check');
+		body.append('postcode', compact);
+
+		fetch(cfg.ajaxUrl, {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			body: body.toString()
+		})
+			.then(function (response) { return response.json(); })
+			.then(function (res) {
+				if (res && res.success && res.data && typeof res.data.html === 'string') {
+					holder.innerHTML = res.data.html;
+					// Initialise any client-side result containers (GeoJSON mode).
+					var nodes = holder.querySelectorAll('[data-cac-result]');
+					for (var i = 0; i < nodes.length; i++) {
+						initResult(nodes[i]);
+					}
+					// Gently bring the result into view without jumping to the top.
+					if (holder.scrollIntoView) {
+						holder.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+					}
+				} else {
+					holder.innerHTML = '<p class="cac-note">' + (cfg.error || 'Something went wrong.') + '</p>';
+				}
+			})
+			.catch(function () {
+				holder.innerHTML = '<p class="cac-note">' + (cfg.error || 'Something went wrong.') + '</p>';
+			});
 	}
 
 	/**
