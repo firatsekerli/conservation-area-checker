@@ -91,6 +91,19 @@
 			// Strip spaces before appending to the URL, for example GU514BY.
 			var compact = value.replace(/\s+/g, '').toUpperCase();
 
+			// Inline mode: stay on the current page and just set the postcode,
+			// so the shortcode renders the result here instead of redirecting.
+			if (form.getAttribute('data-cac-inline') === '1') {
+				try {
+					var here = new URL(window.location.href);
+					here.searchParams.set('postcode', compact);
+					window.location.href = here.toString();
+				} catch (e) {
+					window.location.href = window.location.pathname + '?postcode=' + encodeURIComponent(compact);
+				}
+				return;
+			}
+
 			var base = (window.cacChecker && window.cacChecker.resultsUrl)
 				? window.cacChecker.resultsUrl
 				: '/conservation-area-checker/';

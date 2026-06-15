@@ -32,12 +32,19 @@ class CAC_Shortcode {
 	 * Breakdance that bypass the the_content filter. When the URL carries a
 	 * postcode it renders the full results; otherwise it renders the form.
 	 *
-	 * @param array $atts Shortcode attributes (unused, reserved for future use).
+	 * Attributes:
+	 *   inline - "true" to show the result on the current page instead of
+	 *            redirecting to the dedicated results page. Default "false".
+	 *
+	 * @param array $atts Shortcode attributes.
 	 * @return string
 	 */
 	public function render( $atts = array() ) {
 		// Enqueue assets here so they load only where the shortcode appears.
 		cac()->enqueue_assets();
+
+		$atts   = shortcode_atts( array( 'inline' => 'false' ), $atts, 'conservation_postcode_search' );
+		$inline = in_array( strtolower( (string) $atts['inline'] ), array( '1', 'true', 'yes', 'on' ), true );
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only public tool.
 		$has_postcode = isset( $_GET['postcode'] ) && '' !== trim( (string) wp_unslash( $_GET['postcode'] ) );
@@ -45,7 +52,7 @@ class CAC_Shortcode {
 			return cac()->results_page->render_output();
 		}
 
-		return $this->form_html();
+		return $this->form_html( $inline );
 	}
 
 	/**
@@ -54,13 +61,15 @@ class CAC_Shortcode {
 	 * Works in Breakdance Custom Code blocks, Classic and Block editor Custom
 	 * HTML blocks, text widgets, and any page or post.
 	 *
+	 * @param bool $inline When true, the form submits to the current page so the
+	 *                      result shows inline instead of on the results page.
 	 * @return string Form markup.
 	 */
-	public function form_html() {
+	public function form_html( $inline = false ) {
 		ob_start();
 		?>
 		<div class="cac-checker">
-			<form class="cac-search" data-cac-search novalidate>
+			<form class="cac-search" data-cac-search<?php echo $inline ? ' data-cac-inline="1"' : ''; ?> novalidate>
 				<label class="cac-search-label" for="cac-postcode-input">
 					<?php esc_html_e( 'Enter your postcode', 'conservation-area-checker' ); ?>
 				</label>
